@@ -18,6 +18,9 @@ def parse_equivalence(file_path):
     dict
         Dictionary mapping normalized cell type names to their equivalent names
     """
+    if file_path is None:
+        return {}
+
     with open(file_path, 'r') as f:
         content = f.read().strip()
     
@@ -38,7 +41,7 @@ def parse_equivalence(file_path):
     return equivalence
 
 
-def parse_cell_lineage(file_path, equivalence_dict=None):
+def parse_cell_lineage(file_path, equivalence_file_path=None):
     """
     Parse a cell lineage file and create a dictionary mapping source to root.
     
@@ -52,6 +55,8 @@ def parse_cell_lineage(file_path, equivalence_dict=None):
     dict
         Dictionary mapping normalized cell types to their root
     """
+    equivalence_dict = parse_equivalence(equivalence_file_path)
+
     with open(file_path, 'r') as f:
         content = f.read().strip()
     
@@ -64,7 +69,7 @@ def parse_cell_lineage(file_path, equivalence_dict=None):
         for i in range(len(cells)):
             # first we replace the names with what we have in 
             cells[i] = cells[i].strip()
-            if equivalence_dict is not None and cells[i] in equivalence_dict:
+            if cells[i] in equivalence_dict:
                 cells[i] = equivalence_dict[cells[i]]
             cells[i] = cells[i].upper().replace(" ", "_").replace("-", "_")
         
@@ -87,8 +92,4 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    file_path = args.cell_lineage_file
-       
-    equivalence_dict = parse_equivalence(args.cell_equivalence_file)
-    print(equivalence_dict)
-    print(parse_cell_lineage(file_path, equivalence_dict))
+    print(parse_cell_lineage(args.cell_lineage_file, args.cell_equivalence_file))
