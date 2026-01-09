@@ -40,23 +40,6 @@ class Config:
             "-c", "--config", type=str, help="Path to YAML configuration file"
         )
 
-        # Required arguments
-        parser.add_argument(
-            "--data_path", type=str, help="Path to the AnnData h5ad file"
-        )
-
-        parser.add_argument(
-            "--cell_lineage_file",
-            type=str,
-            help="Path to the cell lineage file (=> separated)",
-        )
-
-        parser.add_argument(
-            "--cell_equivalence_file",
-            type=str,
-            help="Path to the cell equivalence mapping file",
-        )
-
         # add metrics argument
         parser.add_argument(
             "--metrics",
@@ -72,7 +55,7 @@ class Config:
         config_keys = list(args.__dict__.keys())
 
         # other keys to add from the yaml file
-        config_keys.extend(["model"])
+        config_keys.extend(["model", "dataset"])
 
         # First read the config file if provided
         assert (
@@ -102,19 +85,31 @@ class Config:
                 setattr(self, key, value)
 
         # Validate required fields
-        required_fields = ["data_path", "model", "metrics"]
+        required_fields = ["dataset", "model", "metrics"]
         for field in required_fields:
             assert (
                 hasattr(self, field) and getattr(self, field) is not None
             ), f"Required field '{field}' must be specified in config file or as --{field}"
 
+        dataset_required_fields = ["data_path", "preprocessed_dir"]
+        model_required_fields = ["name"]
+
+        for field in dataset_required_fields:
+            assert (
+                field in self.dataset
+            ), f"Required dataset field '{field}' must be specified in config file"
+
+        for field in model_required_fields:
+            assert (
+                field in self.model
+            ), f"Required model field '{field}' must be specified in config file"
+
         # Validate paths exist
-        paths = ["data_path", "cell_lineage_file", "cell_equivalence_file"]
+        paths = {
+            *self.dataset.values(),
+        }
 
         for path in paths:
-            if hasattr(self, path) and getattr(self, path):
-                assert os.path.exists(
-                    getattr(self, path)
-                ), f"Path for '{path}' does not exist: {getattr(self, path)}"
+            assert os.path.exists(path), f"Path for '{path}' does not exist: {path}"
 
         print(f"Configuration loaded successfully with fields: {self.__dict__}")
