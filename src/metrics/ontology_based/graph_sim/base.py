@@ -9,9 +9,11 @@ class GraphSimMetric(BaseMetric):
         """
         The graph similarity metrics we will be using will take in
         """
-        raise NotImplementedError("Subclasses should implement this method.")
+        for submetric in self.submetrics:
+            submetric().eval(graph_pred)
 
-    def build_reference_objects(self):
+    def populate_feature_specs(self):
         """
-        Build the reference graph object needed for graph similarity metrics
+        Populate the feature specifications required for graph similarity metrics
         """
+        # self.feature_specs =

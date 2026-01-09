@@ -2,7 +2,7 @@
 Base class for all metrics. They should all implement the eval method, and
 depend on the dataset that they belong to.
 """
-from config import Config
+from config import Config, register_metric
 
 
 # also store a registry of metrics of name to class
@@ -11,15 +11,29 @@ class BaseMetric:
         self.name = name
         self.dataset = dataset
         self.config = config
-        self.build_reference_objects()
+        self.populate_feature_specs()
+
+    def __init_subclass__(cls):
+        """
+        Automatically register subclasses in the METRIC_REGISTRY.
+
+        This allows for hierarchical structuring of metrics, where
+        subclasses are tracked under their parent classes.
+        """
+        register_metric(cls)
+
+        if not hasattr(cls, "submetrics"):
+            cls.submetrics = []
+
+        for base in cls.__bases__:
+            if hasattr(base, "submetrics"):
+                base.submetrics.append(cls)
 
     def eval(self, *args, **kwargs):
         raise NotImplementedError("Subclasses should implement this method.")
 
-    def build_reference_objects(self):
+    def populate_feature_specs(self):
         """
-        Build any reference objects needed for the metric.
-
-        If the dataset is known, we can load precomputed reference objects here.
+        Populate the feature specifications required for the metric.
         """
         raise NotImplementedError("Subclasses should implement this method.")

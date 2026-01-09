@@ -14,3 +14,6 @@ if __name__ == "__main__":
     # config = Config()
 
     print(METRIC_REGISTRY)  # For debugging: print registered metrics
+    print(
+        METRIC_REGISTRY["GraphSimMetric"].submetrics
+    )  # For debugging: print submetric classes

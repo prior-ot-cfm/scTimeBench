@@ -1,4 +1,10 @@
-import metrics.ontology_based
+# __init__.py
+import pkgutil
+import importlib
 
-if False:
-    metrics.ontology_based  # to avoid unused import warning
+# Automatically import all modules in the current package to trigger registration
+for loader, module_name, is_pkg in pkgutil.walk_packages(
+    __path__, prefix=f"{__name__}."
+):
+    print(loader, module_name, is_pkg)
+    importlib.import_module(module_name)
