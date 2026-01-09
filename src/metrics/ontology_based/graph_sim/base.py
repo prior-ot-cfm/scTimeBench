@@ -2,6 +2,7 @@
 Graph Similarity Metric Base Class
 """
 from metrics.base import BaseMetric
+from models.base import FeatureSpec
 
 
 class GraphSimMetric(BaseMetric):
@@ -16,12 +17,11 @@ class GraphSimMetric(BaseMetric):
         else:
             self._eval(self.graph_pred, self.graph_ref)
 
-    def populate_feature_specs(self):
+    def _populate_feature_specs(self):
         """
         Populate the feature specifications required for graph similarity metrics
         """
-        self.graph_pred = None
-        self.graph_ref = None
+        self.required_feature_specs = [FeatureSpec.TRAJECTORY]
 
     def _eval(self, graph_pred, graph_ref):
         raise NotImplementedError("Subclasses should implement this method.")

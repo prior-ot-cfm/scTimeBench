@@ -9,12 +9,17 @@ import argparse
 import os
 import yaml
 
-METRIC_REGISTRY = {}
+from enum import Enum
 
 
-def register_metric(cls):
-    """Decorator to register a metric class in the METRIC_REGISTRY."""
-    METRIC_REGISTRY[cls.__name__] = cls
+class FeatureSpec(Enum):
+    """Enum for different feature specifications of models, and required features for metrics."""
+
+    CONTINUOUS = "continuous"
+    EMBEDDING = "embedding"
+    TRAJECTORY = "trajectory"
+    GENE_EXPRESSION = "gene_expression"
+    GRN_INFERENCE = "grn_inference"
 
 
 class Config:
@@ -66,6 +71,9 @@ class Config:
         # Get all config keys
         config_keys = list(args.__dict__.keys())
 
+        # other keys to add from the yaml file
+        config_keys.extend(["model"])
+
         # First read the config file if provided
         assert (
             args.config is not None
@@ -94,7 +102,7 @@ class Config:
                 setattr(self, key, value)
 
         # Validate required fields
-        required_fields = ["data_path"]
+        required_fields = ["data_path", "model", "metrics"]
         for field in required_fields:
             assert (
                 hasattr(self, field) and getattr(self, field) is not None
@@ -108,3 +116,5 @@ class Config:
                 assert os.path.exists(
                     getattr(self, path)
                 ), f"Path for '{path}' does not exist: {getattr(self, path)}"
+
+        print(f"Configuration loaded successfully with fields: {self.__dict__}")

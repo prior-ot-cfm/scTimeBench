@@ -2,13 +2,15 @@
 main.py. Entrypoint for measuring trajectories in single-cell data,
 particularly involving gene regulatory networks and cell lineage information.
 """
-from config import Config, METRIC_REGISTRY
+from config import Config
 
 # required to register metrics
 import metrics
 
 if False:
     metrics  # to avoid unused import warning
+
+from metrics.base import METRIC_REGISTRY
 
 
 def run_metrics(config: Config):
