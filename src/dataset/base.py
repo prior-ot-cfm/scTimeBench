@@ -29,6 +29,14 @@ class BaseDatasetFilter:
         """
         register_dataset_filter(cls)
 
+    def _parameters(self):
+        """
+        Subclasses should implement this method to return filter-specific parameters.
+        e.g.: timesplit parameters for time-based filters, or cell-lineage file for
+        lineage-based filters.
+        """
+        return {}
+
     def filter(self, ann_data):
         """
         Subclasses should implement this method to filter and split the dataset
@@ -66,6 +74,19 @@ class BaseDataset:
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
+    def encode_filters(self, dataset_filters):
+        """
+        Generate a string representation of the applied dataset filters
+        and their parameters.
+
+        This can be used to cache processed datasets.
+        """
+        filter_names = [
+            {"name": type(f).__name__, "parameters": f._parameters()}
+            for f in dataset_filters
+        ]
+        return json.dumps(filter_names, sort_keys=True)
+
     def encode_dataset_path(self, dataset_filters):
         """
         Generate a hash for the processed dataset based on the applied filters
@@ -74,7 +95,7 @@ class BaseDataset:
         This can be used to cache processed datasets.
         """
         # Create a unique string based on dataset config and filter names
-        filter_names = [type(f).__name__ for f in dataset_filters]
+        filter_names = self.encode_filters(dataset_filters)
         unique_string = json.dumps(
             {
                 "dataset_config": self.config.dataset,
@@ -116,8 +137,8 @@ class BaseDataset:
         # now we cache the processed dataset for future use
         os.makedirs(self.config.dataset["preprocessed_dir"], exist_ok=True)
         dataset_hash = self.encode_dataset_path(filters)
-        cached_dataset_path = (
-            f"{self.config.dataset['preprocessed_dir']}/{dataset_hash}"
+        cached_dataset_path = os.path.join(
+            self.config.dataset["preprocessed_dir"], dataset_hash
         )
         self.data.write_h5ad(cached_dataset_path)
         return cached_dataset_path

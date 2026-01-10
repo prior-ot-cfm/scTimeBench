@@ -139,7 +139,7 @@ class BaseMetric:
         # now we check the cache based on the set preprocessed directory
         # stop if the cache exists
         cached_dataset_path = self.db_manager.get_processed_dataset_path(
-            self.dataset.config.dataset.get("name"), self.dataset_filters
+            self.dataset, self.dataset_filters
         )
 
         if cached_dataset_path is not None:
@@ -154,5 +154,5 @@ class BaseMetric:
         save_path = self.dataset.load_data(self.dataset_filters)
 
         self.db_manager.insert_processed_dataset(
-            self.dataset.config.dataset["name"], self.dataset_filters, save_path
+            self.dataset, self.dataset_filters, save_path
         )

@@ -6,6 +6,17 @@ from dataset.base import BaseDataset, BaseDatasetFilter, ObservationColumns
 
 
 class LineageDatasetFilter(BaseDatasetFilter):
+    def _parameters(self):
+        """
+        Return filter-specific parameters.
+        """
+        return {
+            "cell_lineage_file": self.config.dataset.get("cell_lineage_file", None),
+            "cell_equivalence_file": self.config.dataset.get(
+                "cell_equivalence_file", None
+            ),
+        }
+
     def filter(self, ann_data) -> BaseDataset:
         """
         Filter the dataset to only include cells present in the lineage information.

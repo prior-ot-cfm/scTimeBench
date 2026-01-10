@@ -12,7 +12,7 @@ including the setup of tables for storing:
 import sqlite3
 from config import Config
 
-import json
+from dataset.base import BaseDataset
 
 
 class DatabaseManager:
@@ -35,41 +35,35 @@ class DatabaseManager:
         # TODO: Create other tables for model checkpoints, predictions, and metric results
         self.conn.commit()
 
-    def encode_filters(self, filters):
-        """
-        Encode the list of dataset filters into a JSON string.
-        """
-        return json.dumps([type(f).__name__ for f in filters])
-
-    def insert_processed_dataset(self, dataset_name, filters, path):
+    def insert_processed_dataset(self, dataset: BaseDataset, filters, path):
         cursor = self.conn.cursor()
 
         # filters will be given as a list of dataset filter class objects
         # turn these into a string representation
-        filters = self.encode_filters(filters)
+        filters = dataset.encode_filters(filters)
 
         cursor.execute(
             """
             INSERT INTO processed_datasets (dataset_name, filters, path)
             VALUES (?, ?, ?)
         """,
-            (dataset_name, filters, path),
+            (dataset.config.dataset["name"], filters, path),
         )
         self.conn.commit()
 
-    def get_processed_dataset_path(self, dataset_name, filters):
+    def get_processed_dataset_path(self, dataset: BaseDataset, filters):
         cursor = self.conn.cursor()
 
         # filters will be given as a list of dataset filter class objects
         # turn these into a string representation
-        filters = self.encode_filters(filters)
+        filters = dataset.encode_filters(filters)
 
         cursor.execute(
             """
             SELECT path FROM processed_datasets
             WHERE dataset_name = ? AND filters = ?
         """,
-            (dataset_name, filters),
+            (dataset.config.dataset["name"], filters),
         )
         result = cursor.fetchone()
         return result[0] if result else None
