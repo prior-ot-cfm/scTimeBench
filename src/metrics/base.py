@@ -2,11 +2,20 @@
 Base class for all metrics. They should all implement the eval method, and
 depend on the dataset that they belong to.
 """
-from config import Config
+from config import Config, RunType
 from typing import final
 from models.base import BaseModel
 from dataset.base import DATASET_REGISTRY
 from database import DatabaseManager
+from enum import Enum
+
+import os
+import yaml
+
+
+class OutputPathName(Enum):
+    EMBEDDING = "embedding.pkl"
+    GRAPH_SIM = "graph_sim.pkl"
 
 
 METRIC_REGISTRY = {}
@@ -22,10 +31,7 @@ class BaseMetric:
     def __init__(self, config: Config, db_manager: DatabaseManager):
         self.db_manager = db_manager
         self.config = config
-        # 1) check the required feature specs match up
-        self._check_feature_specs()
-        self._init_model()
-        self._check_model_feature_specs()
+        self.MODEL_CONFIG_FILENAME = "model_config.yaml"
 
     def __init_subclass__(cls):
         """
@@ -50,6 +56,56 @@ class BaseMetric:
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
+    def _preprocess(self):
+        """
+        Preprocessing steps required before evaluating the metric.
+        """
+        # first we check that the subclasses have defined the required feature specs
+        assert (
+            hasattr(self, "output_path_name")
+            and type(self.output_path_name) is OutputPathName
+        ), "Subclasses must define output_path_name of type OutputPathName"
+
+        # 1) initialize the dataset splits dependent on the metric and initialize the model
+        # with the dataset as its parameter
+        # TODO: split the train and test dataset paths
+        train_data_path = self._init_dataset()
+        self._init_model()
+
+        # now we check if the database already has this model output cached
+        cached_output_path = self.db_manager.get_model_output_path(self.model)
+        if cached_output_path is not None:
+            print("Model output cache found. Loading from cache.")
+            return cached_output_path
+
+        # 2) create the output directory for this model that is parametrized by
+        # this dataset. So that if we run the same model on the same dataset
+        # with the same filters, we will get the same output directory
+        # Each output directory can contain multiple files required by different metrics
+        # (e.g., embedding.pkl, graph_sim.pkl, etc.)
+        # we will first insert a yaml config file that the model can use to
+        # train and test on this dataset
+        hash_output_dir = self.model._encode_output_path()
+        output_path = os.path.join(self.config.output_dir, hash_output_dir)
+
+        os.makedirs(output_path, exist_ok=True)
+
+        yaml_config = {
+            "train_data_path": train_data_path,
+            "test_data_path": train_data_path,  # TODO: change this to test data
+            "output_path": output_path,
+            "output_file_name": self.output_path_name.value,
+        }
+
+        # write out the yaml config file for the model
+        yaml_config_path = os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+        with open(yaml_config_path, "w") as f:
+            yaml.safe_dump(yaml_config, f)
+
+        # now let's save this hash output dir to the database as well
+        self.db_manager.insert_model_output(self.model, output_path)
+        return output_path
+
     @final
     def eval(self):
         """
@@ -60,34 +116,21 @@ class BaseMetric:
         2) train the model on the preprocess dataset and test it
         3) evaluate the metric
         """
-        # 1) initialize the dataset splits dependent on the metric
-        self._init_dataset()
+        # always have to preprocess - self.dataset is required for eval
+        output_path = self._preprocess()
 
-        # 2) train the model on the dataset
-        # self.model.train_and_test(self.dataset)
-
-        # 3) evaluate the metric based on the model outputs
-        self._eval()
+        if self.config.run_type == RunType.PREPROCESS:
+            print(
+                "Run type is PREPROCESS. Skipping model training and metric evaluation."
+            )
+            print(f"Output path for model: {output_path}")
+        elif self.config.run_type == RunType.AUTO_TRAIN_TEST:
+            # self.model.train_and_test()
+            self._eval()
+        elif self.config.run_type == RunType.EVAL_ONLY:
+            self._eval()
 
     # ** METRIC FEATURE SPECS SECTION **
-    @final
-    def _check_feature_specs(self):
-        """
-        Populate the feature specifications required for the metric.
-        """
-        self.required_feature_specs = None
-        self._populate_feature_specs()
-        assert (
-            self.required_feature_specs is not None
-        ), "Subclasses must define required_feature_specs"
-
-    def _populate_feature_specs(self):
-        """
-        Subclasses should implement this method to define
-        their required feature specifications.
-        """
-        raise NotImplementedError("Subclasses should implement this method.")
-
     @final
     def _init_model(self):
         """
@@ -96,15 +139,15 @@ class BaseMetric:
         model_name = self.config.model["name"]
         if model_name not in self.config.get_available_models():
             raise ValueError(f"Model {model_name} not found in registry.")
-        self.model = BaseModel(self.config)
 
-    @final
-    def _check_model_feature_specs(self):
-        """
-        Check if the model's feature specifications satisfy the metric's requirements.
-        """
+        self.model = BaseModel(self.config, self.dataset)
+
+        # Check if the model's feature specifications satisfy the metric's requirements.
         model_feature_specs = self.model.required_feature_specs
         required_specs = self.required_feature_specs
+        assert (
+            self.required_feature_specs is not None
+        ), "Subclasses must define required_feature_specs"
 
         for spec in required_specs:
             if spec not in model_feature_specs:
@@ -113,13 +156,6 @@ class BaseMetric:
                 )
 
     # ** PREPROCESSING DATASET SECTION **
-    def _get_dataset_filters(self):
-        """
-        Populate the dataset filters required for the metric.
-        Expect a list of dataset filter instances.
-        """
-        raise NotImplementedError("Subclasses should implement this method.")
-
     @final
     def _init_dataset(self):
         """
@@ -131,10 +167,16 @@ class BaseMetric:
         2. Checks if the cache exists based on the dataset filters and dataset.
         3. Applies each filter to the dataset in sequence.
         4. Caches the processed dataset for future use.
+        5. Returns the processed dataset path
         """
+        # make sure that the dataset filters are populated
+        assert (
+            self.dataset_filters is not None
+        ), "Subclasses must define dataset_filters"
+
         # 1) initialize the dataset and the dataset filters based on the metric
         self.dataset = DATASET_REGISTRY[self.config.dataset["name"]](
-            self.config, self._get_dataset_filters()
+            self.config, self.dataset_filters
         )
 
         # now we check the cache based on the set preprocessed directory
@@ -142,14 +184,13 @@ class BaseMetric:
         cached_dataset_path = self.db_manager.get_processed_dataset_path(self.dataset)
 
         if cached_dataset_path is not None:
-            print("Processed dataset cache found. Loading from cache.")
-            self.dataset.load_cached_data(cached_dataset_path)
-            return
+            print(f"Processed dataset cache found at {cached_dataset_path}")
+            return cached_dataset_path
 
         # if the cache does not exist, we go ahead and process the dataset
         # this will save out a cached version as well, which we will then
         # insert into the database
         print("No processed dataset cache found. Processing dataset.")
         save_path = self.dataset.load_data()
-
         self.db_manager.insert_processed_dataset(self.dataset, save_path)
+        return save_path

@@ -1,12 +1,20 @@
 """
 Graph Similarity Metric Base Class
 """
-from metrics.base import BaseMetric
+from metrics.base import BaseMetric, OutputPathName
 from models.base import FeatureSpec
 from dataset.filters.lineage import LineageDatasetFilter
 
 
 class GraphSimMetric(BaseMetric):
+    def __init__(self, config, db_manager):
+        super().__init__(config, db_manager)
+
+        # ** NOTE: must define the following two attributes **
+        self.required_feature_specs = [FeatureSpec.TRAJECTORY]
+        self.output_path_name = OutputPathName.GRAPH_SIM
+        self.dataset_filters = [LineageDatasetFilter(self.config)]
+
     def _eval(self):
         """
         The graph similarity metrics we will be using will take in
@@ -18,17 +26,5 @@ class GraphSimMetric(BaseMetric):
         else:
             self._graph_sim_eval(self.graph_pred, self.graph_ref)
 
-    def _populate_feature_specs(self):
-        """
-        Populate the feature specifications required for graph similarity metrics
-        """
-        self.required_feature_specs = [FeatureSpec.TRAJECTORY]
-
     def _graph_sim_eval(self, graph_pred, graph_ref):
         raise NotImplementedError("Subclasses should implement this method.")
-
-    def _get_dataset_filters(self):
-        """
-        Creates the dataset filters required for the metric.
-        """
-        return [LineageDatasetFilter(self.config)]

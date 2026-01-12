@@ -9,6 +9,20 @@ import argparse
 import os
 import yaml
 
+from enum import Enum
+
+
+# enum for the different run types, primarily:
+# 1) auto_train_test: automatically run training and testing for models that support it,
+# by running the training and testing script specified.
+# 2) preprocess: we preprocess the data and then save out a yaml file specifying requirements.
+# The user handles training and testing outside of this framework.
+# 3) eval_only: we only evaluate the metric on already generated data based on step 2).
+class RunType(Enum):
+    AUTO_TRAIN_TEST = "auto_train_test"
+    PREPROCESS = "preprocess"
+    EVAL_ONLY = "eval_only"
+
 
 class Config:
     """Config class for both yaml and cli arguments."""
@@ -52,7 +66,19 @@ class Config:
             "--model_features_path",
             type=str,
             help="Path to the YAML file defining model features",
-            default="model_utils/features.yaml",
+        )
+
+        parser.add_argument(
+            "--run_type",
+            type=str,
+            choices=[rt.value for rt in RunType],
+            help="Type of run to perform: auto_train_test, preprocess, or eval_only. Defaults to preprocess.",
+        )
+
+        parser.add_argument(
+            "--output_dir",
+            type=str,
+            help="Directory to store outputs",
         )
 
         # Parse known arguments
@@ -87,6 +113,9 @@ class Config:
         # Set defaults for optional parameters
         defaults = {
             "database_path": "crispy_fishstick.db",
+            "run_type": RunType.PREPROCESS.value,
+            "model_features_path": "model_utils/features.yaml",
+            "output_dir": "outputs/",
         }
 
         for key, value in defaults.items():
@@ -120,12 +149,25 @@ class Config:
             "cell_equivalence_file",
             "model_features_path",
         ]
+        model_path_keys = [
+            "train_and_test_script",
+        ]
         paths = {
             *{value for key, value in self.dataset.items() if key in dataset_path_keys},
+            *{value for key, value in self.model.items() if key in model_path_keys},
         }
 
         for path in paths:
             assert os.path.exists(path), f"Path for '{path}' does not exist: {path}"
+
+        # set the run type
+        self.run_type = RunType(self.run_type)
+
+        # verify that the train and test script is specified if auto_train_test is set
+        if self.run_type == RunType.AUTO_TRAIN_TEST:
+            assert (
+                "train_and_test_script" in self.model
+            ), "Model must specify 'train_and_test_script' to use --auto_train_test"
 
         print(f"Configuration successfully loaded: {self.__dict__}")
 

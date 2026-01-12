@@ -4,6 +4,9 @@ Model Base Class.
 from typing import final
 from enum import Enum
 import yaml
+import json
+import hashlib
+from dataset.base import BaseDataset
 
 
 class FeatureSpec(Enum):
@@ -17,9 +20,15 @@ class FeatureSpec(Enum):
 
 
 class BaseModel:
-    def __init__(self, config):
+    def __init__(self, config, dataset: BaseDataset):
         self.config = config
         self._check_feature_specs()
+
+        # the model should be parametrized by a dataset
+        assert isinstance(
+            dataset, BaseDataset
+        ), "Model must be initialized with a BaseDataset instance"
+        self.dataset = dataset
 
     @final
     def _check_feature_specs(self):
@@ -49,3 +58,38 @@ class BaseModel:
         on the provided dataset.
         """
         # should be based off of the config's train script and test script
+
+    def _get_name(self) -> str:
+        """
+        Get the name of the model from the configuration.
+        """
+        return self.config.model["name"]
+
+    def _encode_metadata(self) -> str:
+        """
+        Generate a string representation of the model metadata.
+
+        This can be used to cache model outputs.
+        """
+        return json.dumps(self.config.model.get("metadata", {}), sort_keys=True)
+
+    def _encode_output_path(self) -> str:
+        """
+        Encode the output path based on:
+        1) the dataset config
+        2) the dataset filters applied
+        3) the output file name required by the metric
+        and return the full output path as a hashed string.
+        """
+        filters = self.dataset.encode_filters()
+        unique_string = json.dumps(
+            {
+                "name": self._get_name(),
+                "metadata": self._encode_metadata(),
+                "dataset_config": self.config.dataset,
+                "filters": filters,
+            },
+            sort_keys=True,
+        )
+        # Generate a base64 encoded string of the unique string
+        return hashlib.sha256(unique_string.encode()).hexdigest()

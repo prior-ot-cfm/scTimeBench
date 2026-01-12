@@ -4,7 +4,6 @@ data, so this base class will define the necessary interface for dataset preproc
 """
 
 from enum import Enum
-import scanpy as sc
 import os
 import hashlib
 import json
@@ -88,6 +87,20 @@ class BaseDataset:
         ]
         return json.dumps(filter_names, sort_keys=True)
 
+    def encode_config(self):
+        """
+        Generate a string representation of the dataset configuration.
+
+        This can be used to cache processed datasets.
+        """
+        return json.dumps(self.config.dataset, sort_keys=True)
+
+    def get_name(self):
+        """
+        Get the name of the dataset from the configuration.
+        """
+        return self.config.dataset["name"]
+
     def encode_dataset_path(self):
         """
         Generate a hash for the processed dataset based on the applied filters
@@ -96,7 +109,7 @@ class BaseDataset:
         This can be used to cache processed datasets.
         """
         # Create a unique string based on dataset config and filter names
-        filter_names = self.encode_filters(self.dataset_filters)
+        filter_names = self.encode_filters()
         unique_string = json.dumps(
             {
                 "dataset_config": self.config.dataset,
@@ -143,22 +156,3 @@ class BaseDataset:
         )
         self.data.write_h5ad(cached_dataset_path)
         return cached_dataset_path
-
-    def load_cached_data(self, cached_dataset_path):
-        """
-        This ensures that the dataset loading is done properly.
-
-        We require the following:
-        1. Load the data from the source.
-        2. Include observation metadata of cell_type, and timepoint.
-        3. Drop everything else not required, to speed up processing.
-        """
-        self.data = sc.read_h5ad(cached_dataset_path)
-
-        # now let's verify that the necessary columns exist
-        assert (
-            ObservationColumns.CELL_TYPE.value in self.data.obs.columns
-        ), f"Dataset must have '{ObservationColumns.CELL_TYPE.value}' in observation metadata."
-        assert (
-            ObservationColumns.TIMEPOINT.value in self.data.obs.columns
-        ), f"Dataset must have '{ObservationColumns.TIMEPOINT.value}' in observation metadata."
