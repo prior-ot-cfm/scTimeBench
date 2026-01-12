@@ -63,6 +63,18 @@ def main(model_class: BaseModel):
     args = parser.parse_args()
     yaml_config = process_yaml(args.yaml_config)
 
+    # if the model outputs already exist, then we skip generation
+    if os.path.exists(
+        os.path.join(yaml_config["output_path"], yaml_config["output_file_name"])
+    ):
+        print(
+            f'Generated samples found at {os.path.join(yaml_config["output_path"], yaml_config["output_file_name"])}. Skipping generation.'
+        )
+        return
+
+    # Otherwise we have to load the data and train/test the model
+    train_ann_data, test_ann_data = yaml_config["dataset"].load_data()
+
     if args.train:
         # first we check to see if the checkpointed model exists
         if os.path.exists(os.path.join(yaml_config["output_path"], "model.pkl")):
@@ -71,14 +83,10 @@ def main(model_class: BaseModel):
             )
             # we don't exit here because the user may want to run testing right after
         else:
-            # Load data
-            # TODO: load the data splits instead of just load_data
-            ann_data = yaml_config["dataset"].load_data()
-
             # Initialize and train model
             model = model_class()
             print(f"Training model: {model_class.__name__}")
-            model.train(ann_data)
+            model.train(train_ann_data)
             print("Training complete.")
 
             # Save the trained model
@@ -87,23 +95,11 @@ def main(model_class: BaseModel):
                 pickle.dump(model, f)
 
     if args.test:
-        if os.path.exists(
-            os.path.join(yaml_config["output_path"], yaml_config["output_file_name"])
-        ):
-            print(
-                f'Generated samples found at {os.path.join(yaml_config["output_path"], yaml_config["output_file_name"])}. Skipping generation.'
-            )
-            return
-
         model = model_class()
         # Load the trained model
         print(f'Loading trained model from {yaml_config["output_path"]}/model.pkl')
         with open(os.path.join(yaml_config["output_path"], "model.pkl"), "rb") as f:
             model = pickle.load(f)
-
-        # Load test data
-        # TODO: load the test data instead
-        test_ann_data = yaml_config["dataset"].load_data()
 
         # Generate samples -- we'll move the saving of generated samples outside of this script
         model.generate(
