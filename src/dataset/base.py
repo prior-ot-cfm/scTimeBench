@@ -2,8 +2,7 @@
 Base filter for datasets. Every metric will likely require different splits of the
 data, so this base class will define the necessary interface for dataset preprocessing.
 """
-
-from enum import Enum
+from model_utils.shared import ObservationColumns
 import os
 import hashlib
 import json
@@ -51,11 +50,6 @@ DATASET_REGISTRY = {}
 def register_dataset(cls):
     """Decorator to register a dataset class in the DATASET_REGISTRY."""
     DATASET_REGISTRY[cls.__name__] = cls
-
-
-class ObservationColumns(Enum):
-    CELL_TYPE = "cell_type"
-    TIMEPOINT = "timepoint"
 
 
 class BaseDataset:

@@ -2,6 +2,12 @@
 main.py. Entrypoint for measuring trajectories in single-cell data,
 particularly involving gene regulatory networks and cell lineage information.
 """
+# first let's add the model utils path
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+
 from config import Config
 
 # required to register metrics
