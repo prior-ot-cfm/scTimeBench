@@ -1,0 +1,3 @@
+[submodule "models/scNODE"]
+	path = models/scNODE
+	url = git@github.com:ehuan2/scNODE.git
