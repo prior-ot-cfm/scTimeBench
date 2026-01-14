@@ -26,4 +26,4 @@ echo "Success: Found $FILE_PATH"
 echo "Processing content..."
 
 # 5. Now let's run train and test on model.py with the provided YAML file
-python ./examples/ExampleRandomSampler/model.py --yaml_config "$FILE_PATH" --train --test
+python ./examples/ExampleRandomSampler/model.py --yaml_config "$FILE_PATH"
