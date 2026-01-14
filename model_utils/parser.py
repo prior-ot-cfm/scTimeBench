@@ -3,6 +3,7 @@ import os
 import pickle
 import sys
 import yaml
+from shared.constants import RequiredOutputColumns
 
 # ** The following is needed for src/config imports!**
 sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
@@ -44,6 +45,11 @@ def process_yaml(yaml_path):
 class BaseModel:
     def __init__(self, yaml_config):
         self.config = yaml_config
+
+        # let's set the required columns properly
+        self.required_outputs = [
+            RequiredOutputColumns(output) for output in self.config["required_outputs"]
+        ]
 
     def train(self, ann_data):
         raise NotImplementedError("Subclasses should implement this method.")
