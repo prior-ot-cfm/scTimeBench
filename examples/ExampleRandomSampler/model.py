@@ -21,6 +21,8 @@ import scanpy as sc
 class ExampleRandomSampler(BaseModel):
     def train(self, ann_data):
         # Implement training logic here
+        # TODO: show how to cache the trained model if needed,
+        # or rather just get rid of the exampleRandomSampler here for scNODE ?
         self.timepoints = sorted(
             ann_data.obs[ObservationColumns.TIMEPOINT.value].unique()
         )
