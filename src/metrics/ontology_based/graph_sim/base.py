@@ -3,10 +3,14 @@ Graph Similarity Metric Base Class
 """
 from metrics.base import OutputPathName
 from metrics.ontology_based.base import OntologyBasedMetrics
+from shared.constants import ObservationColumns, RequiredOutputColumns
 from shared.helpers import parse_cell_lineage
 from shared.dataset.filters.lineage import LineageDatasetFilter
 
 import numpy as np
+import scanpy as sc
+
+import os
 import logging
 
 
@@ -14,8 +18,14 @@ class GraphSimMetric(OntologyBasedMetrics):
     def __init__(self, config, db_manager):
         super().__init__(config, db_manager)
 
-        # ** NOTE: must define the following attribute **
+        # ** NOTE: must define the following attributes **
+        # where we define the output embedding name
+        # as well as the required features and outputs
         self.output_path_name = OutputPathName.GRAPH_SIM
+        self.required_outputs = [
+            RequiredOutputColumns.EMBEDDING,
+            RequiredOutputColumns.NEXT_TIMEPOINT_EMBEDDING,
+        ]
 
     def _build_ref_graph(self, dataset):
         """
@@ -66,6 +76,44 @@ class GraphSimMetric(OntologyBasedMetrics):
         }
         logging.debug(f"Reference graph adjacency matrix:\n{adjacency_matrix}")
 
+    def _build_pred_graph(self, output_path):
+        """
+        Builds the predicted graph structure based on the output.
+        """
+        # first let's ensure that it's in the right format
+        # we expect it to have the true embeddings and predicted embeddings
+        # for timepoints (1, ..., n) in h5ad format, where we save new embeddings
+        model_output_file = os.path.join(output_path, self.output_path_name.value)
+        ann_data = sc.read_h5ad(model_output_file)
+
+        required_obs_columns = [
+            ObservationColumns.CELL_TYPE.value,
+            ObservationColumns.TIMEPOINT.value,
+        ]
+
+        required_obsm_columns = [
+            RequiredOutputColumns.EMBEDDING.value,
+            RequiredOutputColumns.NEXT_TIMEPOINT_EMBEDDING.value,
+        ]
+
+        for col in required_obs_columns:
+            if col not in ann_data.obs.columns:
+                raise ValueError(
+                    f"Predicted graph data must have '{col}' in observation metadata."
+                )
+        for col in required_obsm_columns:
+            if col not in ann_data.obsm.keys():
+                raise ValueError(
+                    f"Predicted graph data must have '{col}' in observation embeddings."
+                )
+
+        # now that we know the required columns exist, let's build the adjacency matrix
+        timepoints = sorted(ann_data.obs[ObservationColumns.TIMEPOINT.value].unique())
+        cell_types = ann_data.obs[ObservationColumns.CELL_TYPE.value].unique()
+
+        # TODO: finish this later!
+        self.graph_pred = None
+
     def _eval(self, output_path, dataset):
         """
         The graph similarity metrics we will be using will take in
@@ -75,7 +123,7 @@ class GraphSimMetric(OntologyBasedMetrics):
         self._build_ref_graph(dataset)
 
         # build the predicted graph
-        self.graph_pred = None
+        self._build_pred_graph(output_path)
 
         if self.submetrics:
             for submetric in self.submetrics:

@@ -6,6 +6,7 @@ from config import Config, RunType
 from typing import final
 from metrics.model_manager import ModelManager
 from shared.dataset.base import DATASET_REGISTRY, DATASET_FILTER_REGISTRY
+from shared.constants import RequiredOutputColumns
 from database import DatabaseManager
 from enum import Enum
 
@@ -106,11 +107,20 @@ class BaseMetric:
         with open(pickled_dataset_path, "wb") as f:
             pickle.dump(dataset, f)
 
+        assert hasattr(
+            self, "required_outputs"
+        ), "Subclasses must define required_outputs attribute."
+        assert all(
+            isinstance(output, RequiredOutputColumns)
+            for output in self.required_outputs
+        ), "All required_outputs must be of type RequiredOutputColumns"
+
         yaml_config = {
             "output_path": output_path,
             "output_file_name": self.output_path_name.value,
             "dataset_pkl_path": pickled_dataset_path,
             "model": self.config.model_yaml_data,
+            "required_outputs": [output.value for output in self.required_outputs],
         }
 
         # write out the yaml config file for the model
