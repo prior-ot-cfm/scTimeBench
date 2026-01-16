@@ -4,6 +4,8 @@ datasets:
 model:
   name: scNODE
   train_and_test_script: ./models/scNODE/train_and_test.sh
+  metadata:
+    epochs: 1
 
 metrics:
  - name: L1Norm

@@ -72,11 +72,12 @@ def model_setup(n_genes):
 def model_training(
     train_data,
     train_tps,
+    metadata,
 ):
     # Model training
     pretrain_iters = 200
     pretrain_lr = 1e-3
-    epochs = 10
+    epochs = metadata.get("epochs", 10)
     iters = 100
     batch_size = 32
     lr = 1e-3
@@ -116,7 +117,9 @@ class scNODE(BaseModel):
 
         # then, we need to prepare this for scNODE training
         traj_data, tps = prepare_data(ann_data)
-        latent_ode_model, _, _, _, _ = model_training(traj_data, tps)
+        latent_ode_model, _, _, _, _ = model_training(
+            traj_data, tps, self.config["model"].get("metadata", {})
+        )
         # now let's cache the trained model
         self.latent_ode_model = latent_ode_model
 
@@ -196,7 +199,6 @@ class scNODE(BaseModel):
 
         # print the first few embeddings for debugging, they should not be exact
         # because they are both sampled, but they should be close
-        # TODO: maybe only change the above to do one pass instead, where we just get the next timepoint embedding?
         print(
             "First cell embeddings from VAE reconstruct:",
             first_data_embed_from_vae_reconstruct,

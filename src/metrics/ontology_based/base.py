@@ -26,6 +26,7 @@ class OntologyBasedMetrics(BaseMetric):
         """The default parameters for ontology-based metrics."""
         return {}
 
+    # TODO: build the proper hierarchy for this all? or maybe just force graph sim only? not too sure...
     def _setup_model_output_requirements(self):
         """Skip this, as it's a higher level class."""
         self.required_outputs = (

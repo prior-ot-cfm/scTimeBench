@@ -4,6 +4,7 @@ Model Base Class.
 import json
 import hashlib
 import subprocess
+import logging
 from shared.dataset.base import BaseDataset
 
 
@@ -23,7 +24,28 @@ class ModelManager:
         """
         # start a subprocess to run the script and wait for it to finish
         script_path = self.config.model["train_and_test_script"]
-        subprocess.run(["bash", script_path, yaml_config_path], check=True)
+        process = subprocess.Popen(
+            ["bash", script_path, yaml_config_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        # This loop effectively "waits" for the process output to finish
+        if process.stdout:
+            for line in iter(process.stdout.readline, ""):
+                clean_line = line.strip()
+                if clean_line:
+                    logging.debug(clean_line)
+
+        return_code = process.wait()
+
+        if return_code != 0:
+            raise RuntimeError(
+                f"Train and test script failed with return code {return_code}"
+            )
+
+        return return_code
 
     def _get_name(self) -> str:
         """
