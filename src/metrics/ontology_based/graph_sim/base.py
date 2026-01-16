@@ -93,6 +93,8 @@ class GraphSimMetric(OntologyBasedMetrics):
             model_output_file
         )
 
+        logging.debug(f"Predicted trajectory: {pred_trajectory}")
+
         # based on the predicted trajectory, we can build the adjacency matrix
         # let's use the config's threshold for an edge to be created
         num_cell_types = len(self.cell_type_to_id)
