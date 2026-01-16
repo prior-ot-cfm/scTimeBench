@@ -11,6 +11,7 @@ get-annotations==0.1.2
 h5py==3.14.0
 identify==2.6.15
 importlib_resources==6.5.2
+iniconfig==2.1.0
 joblib==1.5.3
 kiwisolver==1.4.7
 legacy-api-wrap==1.5
@@ -26,9 +27,12 @@ pandas==2.3.3
 patsy==1.0.2
 pillow==11.3.0
 platformdirs==4.4.0
+pluggy==1.6.0
 pre_commit==4.3.0
+Pygments==2.19.2
 pynndescent==0.6.0
 pyparsing==3.3.1
+pytest==8.4.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
 PyYAML==6.0.3
@@ -41,6 +45,7 @@ six==1.17.0
 statsmodels==0.14.6
 stdlib-list==0.12.0
 threadpoolctl==3.6.0
+tomli==2.4.0
 tqdm==4.67.1
 typing_extensions==4.15.0
 tzdata==2025.3
