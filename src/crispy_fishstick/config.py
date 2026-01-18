@@ -188,7 +188,8 @@ class Config:
                 )
 
         # validate the fields within each larger section
-        dataset_required_fields = ["data_path", "name", "filters"]
+        # N.B.: we don't need them to specify filters because it might already be preprocessed
+        dataset_required_fields = ["data_path", "name"]
         dataset_alternate_field = "tag"
         model_required_fields = ["name"]
 

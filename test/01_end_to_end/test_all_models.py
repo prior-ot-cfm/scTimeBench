@@ -127,3 +127,93 @@ def test_config_execution(config_path, workspace, run_bench):
                 ), f"Submetric {submetric_name} of {metric_name} produced no evaluations in the database."
 
     db_manager.close()
+
+
+MISC_TEST_DIR = Path(__file__).parent / "misc_test_configs"
+MISC_CONFIG_FILES = list(MISC_TEST_DIR.glob("*.yaml"))
+
+
+@pytest.mark.parametrize("config_path", MISC_CONFIG_FILES, ids=lambda p: p.name)
+def test_dummy_dataset(config_path, workspace, run_bench):
+    """
+    Tests that the dummy dataset is not run in this example because it is not supported.
+    And so no tests should run here.
+    """
+    log_file = Path(config_path).name + ".log"
+    result = run_bench(config_path, "auto_train_test", workspace, log_file)
+
+    assert result.returncode == 0
+
+    # finally, let's verify that in the output that we get the line
+    # Dataset DummyDataset not supported by this metric <metric name>.
+    # for all the metrics, which should be every metric in the metric registry that is not a hierarchical metric
+    # due to us using the base metric class
+    with open(TEST_DIR / "logs" / log_file, "r") as log_file_handle:
+        log_contents = log_file_handle.read()
+
+    # we should be doing this based off of the submetric tree for the metric that we're looking at
+    with open(config_path, "r") as f:
+        import yaml
+
+        config_data = yaml.safe_load(f)
+    metric_to_run = config_data.get("metrics", [])[0]
+    top_metric_name = metric_to_run["name"]
+
+    top_metric_inst = METRIC_REGISTRY[top_metric_name](None, None, {})
+
+    # need to traverse the tree of submetrics to get all the leaf metrics
+    def get_leaf_metrics(metric_inst):
+        if len(metric_inst.submetrics) == 0:
+            return [metric_inst]
+        else:
+            leaves = []
+            for submetric in metric_inst.submetrics:
+                leaves.extend(get_leaf_metrics(submetric(None, None, {})))
+            return leaves
+
+    print(f"Existing leaf metrics: {get_leaf_metrics(top_metric_inst)}")
+    for submetric in get_leaf_metrics(top_metric_inst):
+        if len(submetric.submetrics) == 0:
+            assert (
+                "Dataset {'name': 'DummyDataset', 'data_path': '../data/garcia-alonso/human_germ.h5ad'} not supported by this metric "
+                + f"{submetric.__class__.__name__}."
+                in log_contents
+            ), f"Expected line not found for metric {submetric.__class__.__name__}."
+
+    # finally we should verify that the database is completely empty
+    from crispy_fishstick.database import DatabaseManager
+
+    class dummy_class:
+        def __init__(self, database_path):
+            self.database_path = database_path
+
+    test_config = dummy_class(str(workspace / "crispy_fishstick.db"))
+    db_manager = DatabaseManager(test_config)
+
+    db_contents = db_manager.return_all()
+
+    # verify that the contents are as follows:
+    # 1. Contents of table: model_outputs followed by nothing
+    # 2. Contents of table: metrics followed by a certain number of metrics but no evals
+    # 3. Contents of table: evals followed by nothing
+    stage = 0
+    for line in db_contents.splitlines():
+        if stage == 0:
+            assert (
+                line.strip() == "Contents of table: model_outputs"
+            ), "Unexpected content in database."
+            stage = 1
+        elif stage == 1:
+            assert (
+                line.strip() == "Contents of table: metrics"
+            ), "Unexpected content in output database, there exists some model_outputs created that should not have been."
+            stage = 2
+        elif stage == 2:
+            if line.strip() == "Contents of table: evals":
+                stage = 3
+            else:
+                continue
+        elif stage == 3:
+            assert (
+                line.strip() == ""
+            ), "Unexpected content in output database, there exists some evals created that should not have been."
