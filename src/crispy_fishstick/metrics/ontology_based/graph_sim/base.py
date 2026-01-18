@@ -120,27 +120,16 @@ class GraphSimMetric(OntologyBasedMetrics):
             AdjacencyMatrixType.UNWEIGHTED: adjacency_matrix,
         }
 
-    def _eval(self, output_path, dataset, model):
-        """
-        The graph similarity metrics we will be using will take in
-        """
-        print(f"Model outputs are found: {output_path}")
-        # build the reference graph
-        self._build_ref_graph(dataset)
+    def _prep_kwargs_for_submetric_eval(self, output_path, dataset, model):
+        return {
+            # build the reference graph
+            "graph_ref": self._build_ref_graph(dataset),
+            # build the predicted graph
+            "graph_pred": self._build_pred_graph(output_path),
+            "model": model,
+        }
 
-        # build the predicted graph
-        self._build_pred_graph(output_path)
-
-        if self.submetrics:
-            for submetric in self.submetrics:
-                submetric_instance = submetric(self.config, self.db_manager, {})
-                submetric_instance._graph_sim_eval_wrapper(
-                    self.graph_pred, self.graph_ref, model
-                )
-        else:
-            self._graph_sim_eval_wrapper(self.graph_pred, self.graph_ref, model)
-
-    def _graph_sim_eval_wrapper(self, graph_pred, graph_ref, model):
+    def _submetric_eval(self, graph_pred, graph_ref, model):
         """
         Wrapper function to call the graph similarity evaluation, and handle database
         logging.
