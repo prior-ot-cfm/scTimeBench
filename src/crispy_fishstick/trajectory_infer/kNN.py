@@ -7,6 +7,12 @@ from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutput
 import numpy as np
 import json
 import logging
+from enum import Enum
+
+
+class kNNStrategy(Enum):
+    MAJORITY_VOTE = "majority_vote"
+    WEIGHTED_AVERAGE = "weighted_average"
 
 
 # TODO: build a unit test for this class, to ensure that we're doing this properly
@@ -15,6 +21,9 @@ class kNN(BaseTrajectoryInferMethod):
         super().__init__(traj_config)
         # sets the default number of neighbors
         self.n_neighbors = traj_config.get("n_neighbors", 5)
+        self.strategy = kNNStrategy(
+            traj_config.get("strategy", kNNStrategy.MAJORITY_VOTE.value)
+        )
 
     def _method_infer_trajectory(self, ann_data):
         """
@@ -82,11 +91,41 @@ class kNN(BaseTrajectoryInferMethod):
                 if source_cell_type not in cell_lineage:
                     cell_lineage[source_cell_type] = {}
 
-                # TODO: change this to a majority vote or something similar later
-                for target_cell_type in target_cell_types:
-                    if target_cell_type not in cell_lineage[source_cell_type]:
-                        cell_lineage[source_cell_type][target_cell_type] = 0
-                    cell_lineage[source_cell_type][target_cell_type] += 1
+                if self.strategy == kNNStrategy.MAJORITY_VOTE:
+                    # majority vote: simply count each occurrence
+                    cell_type_counts = {}
+                    for target_cell_type in target_cell_types:
+                        cell_type_counts[target_cell_type] = (
+                            cell_type_counts.get(target_cell_type, 0) + 1
+                        )
+
+                    majority_vote_cell_type = max(
+                        cell_type_counts.items(), key=lambda x: x[1]
+                    )[0]
+                    cell_lineage[source_cell_type][majority_vote_cell_type] = (
+                        cell_lineage[source_cell_type].get(majority_vote_cell_type, 0)
+                        + 1
+                    )
+                elif self.strategy == kNNStrategy.WEIGHTED_AVERAGE:
+                    # weighted average: weight by inverse distance
+                    cell_type_weights = {}
+
+                    for rank, target_cell_type in enumerate(target_cell_types):
+                        weight = 1 / (rank + 1)  # simple inverse rank weighting
+                        cell_type_weights[target_cell_type] = (
+                            cell_type_weights.get(target_cell_type, 0) + weight
+                        )
+
+                    # because k can differ (due to cell type counts), we normalize weights
+                    total_weight = sum(cell_type_weights.values())
+                    for target_cell_type in cell_type_weights:
+                        cell_type_weights[target_cell_type] /= total_weight
+
+                    for target_cell_type, weight in cell_type_weights.items():
+                        cell_lineage[source_cell_type][target_cell_type] = (
+                            cell_lineage[source_cell_type].get(target_cell_type, 0)
+                            + weight
+                        )
 
             logging.debug(
                 f"Processed timepoint {unique_timepoints[i]} resulting in lineage: {cell_lineage}"

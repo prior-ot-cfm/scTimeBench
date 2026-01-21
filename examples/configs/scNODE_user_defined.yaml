@@ -16,3 +16,6 @@ model:
 metrics:
  - name: L1Norm
  - name: GraphEditDistance
+   trajectory_infer_model:
+    name: kNN
+    strategy: weighted_average
