@@ -14,8 +14,10 @@ model:
     epochs: 1
 
 metrics:
- - name: L1Norm
- - name: GraphEditDistance
-   trajectory_infer_model:
-    name: kNN
-    strategy: weighted_average
+  - name: GraphSimMetric
+    trajectory_infer_model:
+      name: OptimalTransport
+  - name: GraphSimMetric
+    trajectory_infer_model:
+      name: OptimalTransport
+      unbalanced_ot_reach: 0.1

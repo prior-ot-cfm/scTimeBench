@@ -14,8 +14,11 @@ model:
     epochs: 1
 
 metrics:
- - name: L1Norm
- - name: GraphEditDistance
+ - name: GraphSimMetric
    trajectory_infer_model:
-    name: kNN
-    strategy: weighted_average
+    name: Classifier
+    classifier: random_forest
+ - name: GraphSimMetric
+   trajectory_infer_model:
+    name: Classifier
+    classifier: boosting
