@@ -51,7 +51,9 @@ class GraphSimMetric(OntologyBasedMetrics):
                     raise ValueError(
                         "Multiple LineageDatasetFilter found in dataset filters."
                     )
-                cell_lineage = parse_cell_lineage(filter.cell_lineage_file)
+                cell_lineage = parse_cell_lineage(
+                    filter.cell_lineage_file, filter.cell_equivalence_file
+                )
 
         if cell_lineage is None:
             raise ValueError("No LineageDatasetFilter found in dataset filters.")
