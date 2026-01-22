@@ -9,6 +9,7 @@ Examples are the kNN graph-based methods, or the optimal transport based methods
 from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputColumns
 from typing import final
 import scanpy as sc
+import logging
 
 DEFAULT_METHOD = "kNN"
 TRAJECTORY_INFER_METHOD_REGISTRY = {}
@@ -56,6 +57,9 @@ class BaseTrajectoryInferMethod:
                     f"Predicted graph data must have '{col}' in observation embeddings."
                 )
 
+        logging.debug(
+            f"Inferring trajectory with method: {self.__class__.__name__} and config: {self.traj_config}"
+        )
         return self._method_infer_trajectory(ann_data)
 
 
@@ -67,6 +71,7 @@ class TrajectoryInferenceMethodFactory:
             raise ValueError(f"Trajectory inference method {method_name} not found.")
 
         method_class = TRAJECTORY_INFER_METHOD_REGISTRY[method_name]
+        logging.debug(f"Using trajectory inference method: {method_name}")
         return method_class(
             traj_config=traj_config,
         )
