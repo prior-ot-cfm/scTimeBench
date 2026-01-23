@@ -106,7 +106,19 @@ class DatabaseManager:
         for table in self.table_names:
             print("-" * 100)
             print(f"Contents of table: {table}")
-            cursor.execute(f"SELECT * FROM {table}")
+            if table == "evals":
+                # add the model name, dataset name, and metric name for easier reading
+                cursor.execute(
+                    """
+                    SELECT evals.id, evals.model_output_id, model_outputs.name, model_outputs.dataset_name, evals.metric_id, metrics.name, evals.result
+                    FROM evals
+                    JOIN model_outputs ON evals.model_output_id = model_outputs.id
+                    JOIN metrics ON evals.metric_id = metrics.id
+                """
+                )
+            else:
+                cursor.execute(f"SELECT * FROM {table}")
+
             rows = cursor.fetchall()
             for row in rows:
                 print(row)

@@ -1,14 +1,11 @@
-datasets:
-  - tag: defaultGarciaAlonso
-
 model:
   name: scNODE
   train_and_test_script: ./models/scNODE/train_and_test.sh
 
-# TODO: figure out why unbalanced OT does not work for Suo...
 metrics:
   - name: BaseMetric
 
+# TODO: figure out why unbalanced OT does not work for Suo...
 # TODO: add this into some test later!
 # metrics:
 #  - name: GraphSimMetric
