@@ -31,13 +31,16 @@ def _to_dense(x):
     return x.toarray() if sp.issparse(x) else x
 
 
-def prepare_data(ann_data, pca_dims: int, seed: int):
+def prepare_data(ann_data, all_tps: List, pca_dims: int, seed: int):
     """
     Prepare data for MIOFlow training with PCA embeddings.
     """
     # get the time points
     cell_tps = ann_data.obs[ObservationColumns.TIMEPOINT.value].to_numpy()
-    unique_tps = sorted(np.unique(cell_tps))
+    if not all_tps:
+        raise ValueError("all_tps must be provided for MIOFlow to build a stable timepoint mapping across splits.")
+    #Use train+test timepoints to create mapping
+    unique_tps = sorted(np.unique(all_tps))
 
     # Fit PCA on all available training data in this runner
     X = _to_dense(ann_data.X)
@@ -70,6 +73,7 @@ def model_training(
     groups: List[int],
     metadata: Dict,
     model_features: int,
+    n_timepoints: int,
     use_cuda: bool,
 ):
     # Model training
@@ -81,7 +85,7 @@ def model_training(
     lambda_density = metadata.get("lambda_density", 5.0)
     use_density_loss = metadata.get("use_density_loss", False)
 
-    model = model_setup(model_features, layers, len(groups), use_cuda)
+    model = model_setup(model_features, layers, n_timepoints, use_cuda)
     criterion = config_criterion("ot")
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
@@ -124,7 +128,7 @@ def model_training(
 
 
 class MIOFlow(BaseModel):
-    def train(self, ann_data):
+    def train(self, ann_data,all_tps = None):
         """
         Training logic for MIOFlow.
         """
@@ -148,35 +152,44 @@ class MIOFlow(BaseModel):
         set_seeds(seed)
         use_cuda = torch.cuda.is_available()
 
+        expected_tps = sorted(np.unique(all_tps)) if all_tps else None
+
         if os.path.exists(cache_path):
             print("Trained MIOFlow model found, loading from file.")
             cache = torch.load(cache_path, map_location="cpu")
-            self.pca = cache["pca"]
-            self.tp_to_idx = cache["tp_to_idx"]
-            self.idx_to_tp = cache["idx_to_tp"]
-            model_features = cache["model_features"]
-            layers = cache["layers"]
-            self.model = model_setup(
-                model_features, layers, len(self.tp_to_idx), use_cuda
-            )
-            self.model.load_state_dict(cache["model_state"])
-            self.use_gae = cache.get("use_gae", False)
-            self.autoencoder = None
-            if self.use_gae:
-                encoder_layers = cache["gae_encoder_layers"]
-                gae = Autoencoder(
-                    encoder_layers=encoder_layers,
-                    decoder_layers=encoder_layers[::-1],
-                    activation="ReLU",
-                    use_cuda=use_cuda,
+            cached_tps = cache.get("all_tps")
+            if expected_tps is not None and cached_tps is not None and list(cached_tps) != list(expected_tps):
+                print("Cached MIOFlow model timepoints mismatch; retraining.")
+            elif expected_tps is not None and cached_tps is None:
+                print("Cached MIOFlow model missing timepoint mapping; retraining.")
+            else:
+                self.pca = cache["pca"]
+                self.tp_to_idx = cache["tp_to_idx"]
+                self.idx_to_tp = cache["idx_to_tp"]
+                model_features = cache["model_features"]
+                layers = cache["layers"]
+                self.model = model_setup(
+                    model_features, layers, len(self.tp_to_idx), use_cuda
                 )
-                gae.load_state_dict(cache["autoencoder_state"])
-                self.autoencoder = gae
-            self.df_train = None
-            return
+                self.model.load_state_dict(cache["model_state"])
+                self.use_gae = cache.get("use_gae", False)
+                self.autoencoder = None
+                if self.use_gae:
+                    encoder_layers = cache["gae_encoder_layers"]
+                    gae = Autoencoder(
+                        encoder_layers=encoder_layers,
+                        decoder_layers=encoder_layers[::-1],
+                        activation="ReLU",
+                        use_cuda=use_cuda,
+                    )
+                    gae.load_state_dict(cache["autoencoder_state"])
+                    self.autoencoder = gae
+                self.df_train = None
+                return
 
         df_train, unique_tps, tp_to_idx, pca = prepare_data(
             ann_data,
+            all_tps = all_tps,
             pca_dims=pca_dims,
             seed=seed,
         )
@@ -243,6 +256,7 @@ class MIOFlow(BaseModel):
             groups=sorted(df_train.samples.unique()),
             metadata=metadata,
             model_features=model_features,
+            n_timepoints=len(self.tp_to_idx),
             use_cuda=use_cuda,
         )
         self.autoencoder = autoencoder
@@ -256,6 +270,7 @@ class MIOFlow(BaseModel):
             "model_features": model_features,
             "layers": layers,
             "use_gae": self.use_gae,
+            "all_tps": expected_tps,
         }
         if self.use_gae and self.autoencoder is not None:
             cache_payload["autoencoder_state"] = self.autoencoder.state_dict()

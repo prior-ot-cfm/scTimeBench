@@ -98,7 +98,7 @@ def model_training(
 
 
 class scNODE(BaseModel):
-    def train(self, ann_data):
+    def train(self, ann_data, all_tps=None):
         """
         Training logic for scNODE.
         """
