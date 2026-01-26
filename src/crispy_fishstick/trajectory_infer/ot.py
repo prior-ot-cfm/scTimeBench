@@ -51,7 +51,7 @@ class OptimalTransport(BaseTrajectoryInferMethod):
                 ann_data.obsm[RequiredOutputColumns.NEXT_TIMEPOINT_EMBEDDING.value],
             )
 
-    def _method_infer_trajectory(self, ann_data):
+    def _method_infer_trajectory(self, ann_data, traj_infer_path):
         """
         Infer the trajectory using an OT method. There are two types, one where we
         use the gene expression:

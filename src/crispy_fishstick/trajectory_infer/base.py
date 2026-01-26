@@ -50,7 +50,7 @@ class BaseTrajectoryInferMethod:
         """
         return False
 
-    def _method_infer_trajectory(self, ann_data):
+    def _method_infer_trajectory(self, ann_data, traj_infer_path):
         raise NotImplementedError("Subclasses should implement this method.")
 
     def _parameters(self):
@@ -118,9 +118,9 @@ class BaseTrajectoryInferMethod:
 
         # now we also write the traj_config to file for future reference
         with open(os.path.join(traj_infer_path, TRAJ_CONFIG_FILE), "w") as f:
-            json.dump(self.traj_config, f)
+            f.write(str(self))
 
-        inferred_traj = self._method_infer_trajectory(ann_data)
+        inferred_traj = self._method_infer_trajectory(ann_data, traj_infer_path)
 
         with open(os.path.join(traj_infer_path, INFERRED_TRAJ_FILE), "w") as f:
             json.dump(inferred_traj, f)
@@ -141,8 +141,7 @@ class BaseTrajectoryInferMethod:
         """
         return hashlib.md5(str(self).encode()).hexdigest()
 
-    def _classification_entropy(self, ann_data):
-        return 1  # placeholder implementation
+    def _classification_entropy(self, ann_data, traj_infer_path):
         raise NotImplementedError("Subclasses should implement this method.")
 
     @final
@@ -180,7 +179,15 @@ class BaseTrajectoryInferMethod:
             f"Evaluating classification entropy with method: {self.__class__.__name__} and config: {self.traj_config}"
         )
 
-        return self._classification_entropy(ann_data)
+        # we use the same cached trajectory path so that way we can save classifiers
+        # in the future if needed, as it takes time to fit
+        model_output_path = Path(model_output_file).parent
+        traj_infer_path = os.path.join(
+            model_output_path, INFERRED_TRAJ_DIR, self.encode()
+        )
+        os.makedirs(traj_infer_path, exist_ok=True)
+
+        return self._classification_entropy(ann_data, traj_infer_path)
 
 
 class TrajectoryInferenceMethodFactory:
