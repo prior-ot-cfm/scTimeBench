@@ -1,11 +1,16 @@
 """
 Classifier implementation for trajectory inference.
 """
-from crispy_fishstick.trajectory_infer.base import BaseTrajectoryInferMethod
+from crispy_fishstick.trajectory_infer.base import (
+    BaseTrajectoryInferMethod,
+    INFERRED_TRAJ_DIR,
+)
 from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputColumns
 from enum import Enum
 import numpy as np
+import scanpy as sc
 import logging
+from pathlib import Path
 
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
@@ -154,3 +159,44 @@ class Classifier(BaseTrajectoryInferMethod):
         test_probas = self.classifier.predict_proba(X_test)
         next_tp_probas = self.classifier.predict_proba(next_timepoint_embeddings)
         return test_probas, accuracy, next_tp_probas
+
+    def train_and_predict(self, model_output_file):
+        """
+        Trains and predicts using the trajectory inference model, returning the probabilities
+        """
+        ann_data = sc.read_h5ad(model_output_file)
+
+        required_obs_columns = [
+            ObservationColumns.CELL_TYPE.value,
+            ObservationColumns.TIMEPOINT.value,
+        ]
+
+        required_obsm_columns = [
+            RequiredOutputColumns.EMBEDDING.value,
+            RequiredOutputColumns.NEXT_TIMEPOINT_EMBEDDING.value,
+        ]
+
+        for col in required_obs_columns:
+            if col not in ann_data.obs.columns:
+                raise ValueError(
+                    f"Predicted graph data must have '{col}' in observation metadata."
+                )
+        for col in required_obsm_columns:
+            if col not in ann_data.obsm.keys():
+                raise ValueError(
+                    f"Predicted graph data must have '{col}' in observation embeddings."
+                )
+
+        logging.debug(
+            f"Evaluating classification entropy with method: {self.__class__.__name__} and config: {self.traj_config}"
+        )
+
+        # we use the same cached trajectory path so that way we can save classifiers
+        # in the future if needed, as it takes time to fit
+        model_output_path = Path(model_output_file).parent
+        traj_infer_path = os.path.join(
+            model_output_path, INFERRED_TRAJ_DIR, self.encode()
+        )
+        os.makedirs(traj_infer_path, exist_ok=True)
+
+        return self._subclass_train_and_predict(ann_data, traj_infer_path)
