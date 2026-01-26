@@ -23,7 +23,7 @@ class TimeSplitDatasetFilter(BaseDatasetFilter):
 
     def filter(self, ann_data):
         """
-       Split the dataset based on the given test timepoints.
+        Split the dataset based on the given test timepoints.
         """
         # Split the dataset based on the given test_tps
         tp_column = ObservationColumns.TIMEPOINT.value
