@@ -7,6 +7,9 @@ from crispy_fishstick.shared.constants import RequiredOutputColumns
 from crispy_fishstick.trajectory_infer.base import TrajectoryInferenceMethodFactory
 from crispy_fishstick.trajectory_infer.classifier import Classifier
 
+import logging
+import os
+
 
 class TrajectoryEmbeddingMetrics(EmbeddingMetrics):
     def _setup_model_output_requirements(self):
@@ -24,6 +27,10 @@ class TrajectoryEmbeddingMetrics(EmbeddingMetrics):
 class ClassificationEntropy(TrajectoryEmbeddingMetrics):
     def _setup_trajectory_inference_model(self):
         # by default we use the classifier trajectory inference model
+        logging.debug(
+            "Setting up trajectory inference model for classification entropy."
+        )
+
         self.trajectory_infer_model = (
             TrajectoryInferenceMethodFactory().get_trajectory_infer_method(
                 self.metric_config.get(
@@ -34,4 +41,7 @@ class ClassificationEntropy(TrajectoryEmbeddingMetrics):
         self.params["trajectory_infer_model"] = str(self.trajectory_infer_model)
 
     def _embedding_eval(self, output_path):
-        return self.trajectory_infer_model.evaluate_classification_entropy(output_path)
+        model_output_file = os.path.join(output_path, self.output_path_name.value)
+        return self.trajectory_infer_model.evaluate_classification_entropy(
+            model_output_file
+        )

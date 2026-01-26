@@ -282,11 +282,7 @@ class BaseMetric:
                 submetric_instance: BaseMetric = submetric(
                     self.config,
                     self.db_manager,
-                    {
-                        "trajectory_infer_model": self.metric_config.get(
-                            "trajectory_infer_model", {}
-                        )
-                    },
+                    self.metric_config,
                 )
                 submetric_instance.eval()
         else:

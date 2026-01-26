@@ -31,7 +31,7 @@ class kNN(BaseTrajectoryInferMethod):
             "metric": self.traj_config.get("metric", "minkowski"),
         }
 
-    def _method_infer_trajectory(self, ann_data):
+    def _method_infer_trajectory(self, ann_data, traj_infer_path):
         """
         Infer the trajectory using kNN graph-based method.
 
