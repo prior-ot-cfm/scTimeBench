@@ -1,12 +1,19 @@
 """
 kNN implementation for trajectory inference.
 """
-from crispy_fishstick.trajectory_infer.base import BaseTrajectoryInferMethod
+from crispy_fishstick.trajectory_infer.base import (
+    BaseTrajectoryInferMethod,
+    INFERRED_TRAJ_DIR,
+)
 from sklearn.neighbors import NearestNeighbors
 from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputColumns
 import numpy as np
 import logging
 from enum import Enum
+import os
+import joblib
+
+KNN_SAVE_FILE = "knn_model.pkl"
 
 
 class kNNStrategy(Enum):
@@ -146,3 +153,36 @@ class kNN(BaseTrajectoryInferMethod):
                 cell_lineage[source_cell_type][target_cell_type] /= total_counts
 
         return cell_lineage
+
+    def get_kNN_graph(self, ann_data, model_output_path):
+        """
+        Function to get the kNN graph used in the trajectory inference.
+
+        This can be useful for visualization or further analysis.
+        """
+        # get the embeddings
+        traj_infer_path = os.path.join(
+            model_output_path, INFERRED_TRAJ_DIR, self.encode()
+        )
+
+        embeddings = ann_data.obsm[RequiredOutputColumns.EMBEDDING.value]
+
+        if os.path.exists(os.path.join(traj_infer_path, KNN_SAVE_FILE)):
+            logging.debug("Loading existing kNN model from disk.")
+            knn_model = joblib.load(os.path.join(traj_infer_path, KNN_SAVE_FILE))
+            return knn_model
+
+        # build kNN model based on embeddings
+        knn_model = NearestNeighbors(
+            n_neighbors=self.n_neighbors,
+            metric=self.traj_config.get("metric", "minkowski"),
+        )
+
+        # save the kNN graph first and then save it and return it
+        knn_model.fit(embeddings)
+        joblib.dump(knn_model, os.path.join(traj_infer_path, KNN_SAVE_FILE))
+        logging.debug(
+            f"Saved kNN model to {os.path.join(traj_infer_path, KNN_SAVE_FILE)}"
+        )
+
+        return knn_model
