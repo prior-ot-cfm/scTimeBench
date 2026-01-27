@@ -50,7 +50,7 @@ class BaseTrajectoryInferMethod:
         """
         return False
 
-    def _method_infer_trajectory(self, ann_data):
+    def _method_infer_trajectory(self, ann_data, traj_infer_path):
         raise NotImplementedError("Subclasses should implement this method.")
 
     def _parameters(self):
@@ -118,9 +118,9 @@ class BaseTrajectoryInferMethod:
 
         # now we also write the traj_config to file for future reference
         with open(os.path.join(traj_infer_path, TRAJ_CONFIG_FILE), "w") as f:
-            json.dump(self.traj_config, f)
+            f.write(str(self))
 
-        inferred_traj = self._method_infer_trajectory(ann_data)
+        inferred_traj = self._method_infer_trajectory(ann_data, traj_infer_path)
 
         with open(os.path.join(traj_infer_path, INFERRED_TRAJ_FILE), "w") as f:
             json.dump(inferred_traj, f)
