@@ -10,7 +10,7 @@ import pickle
 import yaml
 
 from crispy_fishstick.shared.constants import RequiredOutputColumns
-
+from crispy_fishstick.shared.constants import ObservationColumns
 
 def get_parser():
     # parser that will read the input data path and the model output path
@@ -54,7 +54,7 @@ class BaseModel:
             RequiredOutputColumns(output) for output in self.config["required_outputs"]
         ]
 
-    def train(self, ann_data):
+    def train(self, ann_data,all_tps = None):
         raise NotImplementedError("Subclasses should implement this method.")
 
     def generate(self, test_ann_data, expected_output_path):
@@ -81,12 +81,20 @@ def main(model_class: BaseModel):
     print("Loading dataset...")
     train_ann_data, test_ann_data = yaml_config["dataset"].load_data()
 
+    #Some methods map the tps to indices, argument all used for pertinent methods.
+    #Providing it to train argument for processing to be handled within the subclasses.
+    time_col = ObservationColumns.TIMEPOINT.value
+    all_tps = (train_ann_data.obs[time_col].unique().tolist() 
+    + test_ann_data.obs[time_col].unique().tolist()
+    )
+    all_tps = list(set(all_tps))
+
     # Initialize the model
     model: BaseModel = model_class(yaml_config)
 
     print(f"Training and/or loading the model: {model_class.__name__}")
     # let's let the train() function handle the caching as well
-    model.train(train_ann_data)
+    model.train(train_ann_data,all_tps=all_tps)
     print("Training/loading complete.")
 
     # Generate samples -- we'll move the saving of generated samples outside of this script
