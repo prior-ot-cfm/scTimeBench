@@ -8,9 +8,11 @@ import argparse
 import os
 import pickle
 import yaml
+import scanpy as sc
 
 from crispy_fishstick.shared.constants import RequiredOutputColumns
 from crispy_fishstick.shared.constants import ObservationColumns
+
 
 def get_parser():
     # parser that will read the input data path and the model output path
@@ -54,11 +56,21 @@ class BaseModel:
             RequiredOutputColumns(output) for output in self.config["required_outputs"]
         ]
 
-    def train(self, ann_data,all_tps = None):
+        if self.is_ot_method():
+            self.required_outputs.append(RequiredOutputColumns.NEXT_CELLTYPE)
+
+    def train(self, ann_data, all_tps=None):
         raise NotImplementedError("Subclasses should implement this method.")
 
     def generate(self, test_ann_data, expected_output_path):
         raise NotImplementedError("Subclasses should implement this method.")
+
+    def is_ot_method(self) -> bool:
+        """
+        Check if the model is an OT-based method. Defaults to False.
+        Subclasses representing OT methods should override this method to return True.
+        """
+        return False
 
 
 def main(model_class: BaseModel):
@@ -81,11 +93,12 @@ def main(model_class: BaseModel):
     print("Loading dataset...")
     train_ann_data, test_ann_data = yaml_config["dataset"].load_data()
 
-    #Some methods map the tps to indices, argument all used for pertinent methods.
-    #Providing it to train argument for processing to be handled within the subclasses.
+    # Some methods map the tps to indices, argument all used for pertinent methods.
+    # Providing it to train argument for processing to be handled within the subclasses.
     time_col = ObservationColumns.TIMEPOINT.value
-    all_tps = (train_ann_data.obs[time_col].unique().tolist() 
-    + test_ann_data.obs[time_col].unique().tolist()
+    all_tps = (
+        train_ann_data.obs[time_col].unique().tolist()
+        + test_ann_data.obs[time_col].unique().tolist()
     )
     all_tps = list(set(all_tps))
 
@@ -94,10 +107,25 @@ def main(model_class: BaseModel):
 
     print(f"Training and/or loading the model: {model_class.__name__}")
     # let's let the train() function handle the caching as well
-    model.train(train_ann_data,all_tps=all_tps)
+    model.train(train_ann_data, all_tps=all_tps)
     print("Training/loading complete.")
 
     # Generate samples -- we'll move the saving of generated samples outside of this script
     print(f"Starting generation to {model_output_path}")
     model.generate(test_ann_data, expected_output_path=model_output_path)
     print("Generation complete.")
+
+    # verify that the output file was created, and that it contains the required columns
+    if not os.path.exists(model_output_path):
+        raise RuntimeError(f"Model output file was not created at {model_output_path}")
+    print(f"Verifying generated output at {model_output_path}")
+
+    # load the ann data and check for required columns
+    generated_ann_data = sc.read_h5ad(model_output_path)
+    for required_output in model.required_outputs:
+        if required_output.value not in generated_ann_data.obsm.keys():
+            # delete the generated file to avoid confusion
+            os.remove(model_output_path)
+            raise RuntimeError(
+                f"Generated output missing required column: {required_output.value}"
+            )
