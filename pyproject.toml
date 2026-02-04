@@ -6,13 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "crispy_fishstick"  # This is the name you use for 'pip install'
 version = "0.1"
 dependencies = [
-    "networkx",
-    "numpy",
     "PyYAML",
     "scanpy[leiden]",
     "scikit_learn",
-    "geomloss",
-    "pykeops"
 ]
 
 [tool.setuptools.packages.find]
@@ -24,6 +20,15 @@ test = [
 ]
 dev = [
     "pre-commit",
+]
+benchmark = [
+    "networkx",
+    "numpy",
+    "geomloss",
+    "pykeops"
+]
+graphviz = [
+    "graphviz"
 ]
 
 [project.scripts]

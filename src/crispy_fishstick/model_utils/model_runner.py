@@ -8,9 +8,11 @@ import argparse
 import os
 import pickle
 import yaml
+import scanpy as sc
 
 from crispy_fishstick.shared.constants import RequiredOutputColumns
 from crispy_fishstick.shared.constants import ObservationColumns
+
 
 def get_parser():
     # parser that will read the input data path and the model output path
@@ -49,12 +51,32 @@ class BaseModel:
     def __init__(self, yaml_config):
         self.config = yaml_config
 
-        # let's set the required columns properly
-        self.required_outputs = [
-            RequiredOutputColumns(output) for output in self.config["required_outputs"]
-        ]
+        # normalize required outputs: list or list of lists
+        raw_required_outputs = self.config["required_outputs"]
+        if not raw_required_outputs:
+            raise ValueError("required_outputs must not be empty.")
 
-    def train(self, ann_data,all_tps = None):
+        if all(isinstance(item, list) for item in raw_required_outputs):
+            required_output_options = [
+                [RequiredOutputColumns(output) for output in option]
+                for option in raw_required_outputs
+            ]
+        else:
+            required_output_options = [
+                [RequiredOutputColumns(output) for output in raw_required_outputs]
+            ]
+
+        self.required_outputs_options = required_output_options
+
+        # by default since we are not an OT method, we just select the option without NEXT_CELLTYPE
+        for option in required_output_options:
+            if RequiredOutputColumns.NEXT_CELLTYPE not in option:
+                self.required_outputs = option
+                break
+
+        print(f"Required outputs: {self.required_outputs}")
+
+    def train(self, ann_data, all_tps=None):
         raise NotImplementedError("Subclasses should implement this method.")
 
     def generate(self, test_ann_data, expected_output_path):
@@ -81,11 +103,12 @@ def main(model_class: BaseModel):
     print("Loading dataset...")
     train_ann_data, test_ann_data = yaml_config["dataset"].load_data()
 
-    #Some methods map the tps to indices, argument all used for pertinent methods.
-    #Providing it to train argument for processing to be handled within the subclasses.
+    # Some methods map the tps to indices, argument all used for pertinent methods.
+    # Providing it to train argument for processing to be handled within the subclasses.
     time_col = ObservationColumns.TIMEPOINT.value
-    all_tps = (train_ann_data.obs[time_col].unique().tolist() 
-    + test_ann_data.obs[time_col].unique().tolist()
+    all_tps = (
+        train_ann_data.obs[time_col].unique().tolist()
+        + test_ann_data.obs[time_col].unique().tolist()
     )
     all_tps = list(set(all_tps))
 
@@ -94,10 +117,26 @@ def main(model_class: BaseModel):
 
     print(f"Training and/or loading the model: {model_class.__name__}")
     # let's let the train() function handle the caching as well
-    model.train(train_ann_data,all_tps=all_tps)
+    model.train(train_ann_data, all_tps=all_tps)
     print("Training/loading complete.")
 
     # Generate samples -- we'll move the saving of generated samples outside of this script
     print(f"Starting generation to {model_output_path}")
     model.generate(test_ann_data, expected_output_path=model_output_path)
     print("Generation complete.")
+
+    # verify that the output file was created, and that it contains the required columns
+    if not os.path.exists(model_output_path):
+        raise RuntimeError(f"Model output file was not created at {model_output_path}")
+    print(f"Verifying generated output at {model_output_path}")
+
+    # TODO: add generate and train under a try catch which will clean the model output path if anything fails
+    # load the ann data and check for required columns
+    generated_ann_data = sc.read_h5ad(model_output_path)
+    for required_output in model.required_outputs:
+        if required_output.value not in generated_ann_data.obsm.keys():
+            # delete the generated file to avoid confusion
+            os.remove(model_output_path)
+            raise RuntimeError(
+                f"Generated output missing required column: {required_output.value}"
+            )
