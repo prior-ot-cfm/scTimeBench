@@ -277,10 +277,6 @@ class BaseMetric:
         # to make our lives easier, we will also pickle our current dataset object
         # and store this in the output directory as well
         # so that the model can load this dataset object directly for training and testing
-        pickled_dataset_path = os.path.join(output_path, PICKLED_DATASET_FILENAME)
-        with open(pickled_dataset_path, "wb") as f:
-            pickle.dump(dataset, f)
-
         assert hasattr(
             self, "required_outputs"
         ), "Subclasses must define required_outputs attribute."
@@ -311,7 +307,9 @@ class BaseMetric:
 
         yaml_config = {
             "output_path": output_path,
-            "dataset_pkl_path": pickled_dataset_path,
+            "dataset_pkl_path": os.path.join(
+                dataset.get_dataset_dir(), PICKLED_DATASET_FILENAME
+            ),
             "model": self.config.model_yaml_data,
             "required_outputs": required_outputs_serialized,
             "datasets": dataset.encode_dataset_dict(),
@@ -477,9 +475,46 @@ class BaseMetric:
             # now we create a dataset instance with the appropriate filters
             self.datasets.append(
                 DATASET_REGISTRY[dataset["name"]](
-                    dataset, [builder(dataset) for builder in builders]
+                    dataset,
+                    [builder(dataset) for builder in builders],
+                    self.config.output_dir,
                 )
             )
+
+        # 4) Then we insert these datasets into the database if they don't already exist,
+        # and we also create their dataset directories
+        for dataset in self.datasets:
+            self.db_manager.insert_dataset(dataset)
+            logging.debug(
+                f"Processing dataset: {dataset} to {dataset.get_dataset_dir()}"
+            )
+            dataset.create_dataset_dir()
+            # TODO: in this dataset directory, we can then store the base metrics we have
+            # such as the base visualization, etc.
+            # for now, let's just store the dataset object itself, and the model can load this for its own use
+            pickled_dataset_path = os.path.join(
+                dataset.get_dataset_dir(), PICKLED_DATASET_FILENAME
+            )
+            with open(pickled_dataset_path, "wb") as f:
+                pickle.dump(dataset, f)
+
+            # write out the dataset information to the directory as well
+            with open(
+                os.path.join(dataset.get_dataset_dir(), "dataset_info.yaml"), "w"
+            ) as f:
+                yaml.safe_dump(
+                    {
+                        "dataset_dict": dataset.dataset_dict,
+                        "dataset_filters": [
+                            {
+                                "name": type(f).__name__,
+                                "parameters": f._parameters(),
+                            }
+                            for f in dataset.dataset_filters
+                        ],
+                    },
+                    f,
+                )
 
         # verify that the datasets are properly initialized
         # TODO: add a unit test for this!

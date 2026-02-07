@@ -19,4 +19,5 @@ class RequiredOutputFiles(Enum):
     NEXT_CELLTYPE = "next_cell_type.parquet"
 
 
+DATASET_DIR = "datasets"
 PICKLED_DATASET_FILENAME = "dataset.pkl"

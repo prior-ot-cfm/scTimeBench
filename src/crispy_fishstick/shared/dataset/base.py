@@ -2,8 +2,10 @@
 Base filter for datasets. Every metric will likely require different splits of the
 data, so this base class will define the necessary interface for dataset preprocessing.
 """
-from crispy_fishstick.shared.constants import ObservationColumns
+from crispy_fishstick.shared.constants import ObservationColumns, DATASET_DIR
 import json
+import hashlib
+import os
 
 # ** DATASET FILTERING SECTION **
 DATASET_FILTER_REGISTRY = {}
@@ -51,9 +53,10 @@ def register_dataset(cls):
 
 
 class BaseDataset:
-    def __init__(self, dataset_dict, dataset_filters):
+    def __init__(self, dataset_dict, dataset_filters, output_dir):
         self.dataset_dict = dataset_dict
         self.dataset_filters = dataset_filters
+        self.output_dir = output_dir
 
     def __init_subclass__(cls):
         register_dataset(cls)
@@ -161,3 +164,32 @@ class BaseDataset:
             f"Dataset Config: {self.dataset_dict}\n"
             f"Applied Filters: {[type(f).__name__ + ', parameters: ' + str(f._parameters()) for f in self.dataset_filters]}"
         )
+
+    def get_dataset_dir(self):
+        """
+        Get a unique directory name for this dataset configuration, which can be used for caching.
+        This is based on the dataset name, the encoded dataset dictionary, and the encoded filters.
+
+        It should be a hashable string that uniquely identifies the dataset configuration and applied filters,
+        so that we can cache processed datasets effectively.
+        """
+        unique_string = json.dumps(
+            {
+                "dataset_dict": self.encode_dataset_dict(),
+                "filters": self.encode_filters(),
+            },
+            sort_keys=True,
+        )
+
+        # Generate a base64 encoded string of the unique string
+        return os.path.join(
+            self.output_dir,
+            DATASET_DIR,
+            hashlib.sha256(unique_string.encode()).hexdigest(),
+        )
+
+    def create_dataset_dir(self):
+        """
+        Create a directory for this dataset configuration under the given base path.
+        """
+        os.makedirs(self.get_dataset_dir(), exist_ok=True)
