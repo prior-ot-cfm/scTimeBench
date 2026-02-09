@@ -5,10 +5,12 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
+import logging
+import yaml
 
 from crispy_fishstick.shared.constants import (
     RequiredOutputFiles,
-    PICKLED_DATASET_FILENAME,
+    MODEL_CONFIG_FILENAME,
 )
 
 DATASET_CACHE_LIMIT = 3  # max number of datasets to cache in memory
@@ -22,6 +24,34 @@ def clear_dataset_cache():
     DATASET_IN_MEM_CACHE.clear()
 
 
+def get_dataset(output_path):
+    """
+    Get the dataset from the pickled dataset file in output_path.
+
+    Args:
+        output_path: Path to the model output directory
+    Returns:
+        The dataset object loaded from the pickled file
+    """
+    # first let's read the model yaml to get the dataset pickle path
+    model_config_path = os.path.join(output_path, MODEL_CONFIG_FILENAME)
+    if not os.path.exists(model_config_path):
+        raise FileNotFoundError(f"Model config file not found: {model_config_path}")
+    logging.debug(f"Loading model config from {model_config_path}")
+    with open(model_config_path, "r") as f:
+        model_config = yaml.safe_load(f)
+
+    dataset_pkl_path = model_config.get("dataset_pkl_path", None)
+    if not os.path.exists(dataset_pkl_path):
+        raise FileNotFoundError(f"Dataset pickle not found: {dataset_pkl_path}")
+
+    logging.debug(f"Loading dataset from {dataset_pkl_path}")
+    with open(dataset_pkl_path, "rb") as f:
+        dataset = pickle.load(f)
+
+    return dataset, dataset_pkl_path
+
+
 def load_test_dataset(output_path):
     """
     Load the test dataset from the pickled dataset file in output_path.
@@ -32,14 +62,9 @@ def load_test_dataset(output_path):
     Returns:
         The test AnnData object from the dataset
     """
-    dataset_pkl_path = os.path.join(output_path, PICKLED_DATASET_FILENAME)
-    if not os.path.exists(dataset_pkl_path):
-        raise FileNotFoundError(f"Dataset pickle not found: {dataset_pkl_path}")
-
-    with open(dataset_pkl_path, "rb") as f:
-        dataset = pickle.load(f)
-
+    dataset, dataset_pkl_path = get_dataset(output_path)
     test_ann_data = DATASET_IN_MEM_CACHE.get(dataset_pkl_path, None)
+
     if test_ann_data is None:
         _, test_ann_data = dataset.load_data()
         DATASET_IN_MEM_CACHE[dataset_pkl_path] = test_ann_data
@@ -47,7 +72,7 @@ def load_test_dataset(output_path):
             # Remove an arbitrary item (not the most efficient, but simple)
             DATASET_IN_MEM_CACHE.pop(next(iter(DATASET_IN_MEM_CACHE)))
     else:
-        print("Loaded test dataset from in-memory cache.")
+        logging.debug("Loaded test dataset from in-memory cache.")
 
     return test_ann_data
 

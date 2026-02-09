@@ -14,6 +14,7 @@ from crispy_fishstick.shared.dataset.base import (
 from crispy_fishstick.shared.constants import (
     RequiredOutputFiles,
     PICKLED_DATASET_FILENAME,
+    MODEL_CONFIG_FILENAME,
 )
 from crispy_fishstick.database import DatabaseManager
 
@@ -54,7 +55,6 @@ class BaseMetric:
         self.db_manager = db_manager
         self.config = config
         self.metric_config = metric_config
-        self.MODEL_CONFIG_FILENAME = "model_config.yaml"
         self.params = {}
 
         # skip the preprocessing steps if it has submetrics, as they will handle it themselves
@@ -198,7 +198,7 @@ class BaseMetric:
 
                 if not required_outputs_exist:
                     model.train_and_test(
-                        os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+                        os.path.join(output_path, MODEL_CONFIG_FILENAME)
                     )
                 else:
                     logging.info(
@@ -317,7 +317,7 @@ class BaseMetric:
         }
 
         # write out the yaml config file for the model
-        yaml_config_path = os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+        yaml_config_path = os.path.join(output_path, MODEL_CONFIG_FILENAME)
         with open(yaml_config_path, "w") as f:
             yaml.safe_dump(yaml_config, f)
 
