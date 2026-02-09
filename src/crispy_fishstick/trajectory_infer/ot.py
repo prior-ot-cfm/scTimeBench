@@ -34,7 +34,7 @@ class OptimalTransport(BaseTrajectoryInferMethod):
             "unbalanced_ot_reach": self.traj_config.get("unbalanced_ot_reach", None),
         }
 
-    def _subclass_train(self, X_train, y_train, traj_infer_path):
+    def _subclass_train(self, X_train, y_train, traj_infer_path, test_ann_data):
         # here it's simple, we just save the training data for later use
         self.train_tensor = torch.FloatTensor(X_train)
 

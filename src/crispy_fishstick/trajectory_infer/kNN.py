@@ -36,7 +36,7 @@ class kNN(BaseTrajectoryInferMethod):
             "metric": self.traj_config.get("metric", "minkowski"),
         }
 
-    def _subclass_train(self, X_train, y_train, traj_infer_path):
+    def _subclass_train(self, X_train, y_train, traj_infer_path, test_ann_data):
         """
         kNN is an unsupervised method, so no training is needed.
         However, we can build the kNN graph here for later use.

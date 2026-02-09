@@ -15,6 +15,7 @@ from crispy_fishstick.shared.utils import (
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from typing import final
+from anndata import AnnData
 import numpy as np
 import pandas as pd
 import logging
@@ -91,8 +92,15 @@ class BaseTrajectoryInferMethod:
         """Override in subclasses to add method-specific parameters."""
         return {}
 
-    def _subclass_train(self, X_train, y_train, traj_infer_path):
-        """Override in subclasses to implement training logic."""
+    def _subclass_train(
+        self, X_train, y_train, traj_infer_path, test_ann_data: AnnData
+    ):
+        """
+        Override in subclasses to implement training logic.
+
+        We give it the train and test data, as well as the trajectory inference path for caching purposes.
+        The test_ann_data is to access for any other metadata needed (e.g.: gene names for scimilarity).
+        """
         raise NotImplementedError("Subclasses should implement this method.")
 
     def _subclass_predict_probs(self, embeds):
@@ -235,7 +243,7 @@ class BaseTrajectoryInferMethod:
 
         # load the classifier model or train a new one if not exists
         logging.debug(f"Training trajectory inference model {self.__class__.__name__}.")
-        self._subclass_train(X_train, y_train, classifier_save_path)
+        self._subclass_train(X_train, y_train, classifier_save_path, test_ann_data)
         logging.debug(
             f"Predicting trajectory inference model {self.__class__.__name__}."
         )
@@ -281,7 +289,7 @@ class BaseTrajectoryInferMethod:
             logging.debug(
                 f"Training trajectory inference model {self.__class__.__name__} k-fold {len(os.listdir(k_fold_path))}."
             )
-            self._subclass_train(X_train, y_train, fold_path)
+            self._subclass_train(X_train, y_train, fold_path, test_ann_data)
             logging.debug(
                 f"Predicting trajectory inference model {self.__class__.__name__} k-fold {len(os.listdir(k_fold_path))}."
             )

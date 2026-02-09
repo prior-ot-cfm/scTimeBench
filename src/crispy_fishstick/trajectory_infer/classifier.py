@@ -4,6 +4,9 @@ Classifier implementation for trajectory inference.
 from crispy_fishstick.trajectory_infer.base import (
     BaseTrajectoryInferMethod,
 )
+from crispy_fishstick.shared.utils import (
+    load_test_dataset,
+)
 from crispy_fishstick.shared.constants import ObservationColumns
 from enum import Enum
 import logging
@@ -55,7 +58,7 @@ class Classifier(BaseTrajectoryInferMethod):
             "max_depth": self.classifier.max_depth,
         }
 
-    def _subclass_train(self, X_train, y_train, traj_infer_path):
+    def _subclass_train(self, X_train, y_train, traj_infer_path, test_ann_data):
         """
         Classification entropy is simply the fitted model's entropy over the predicted
         trajectories.
@@ -103,7 +106,7 @@ class CellTypist(BaseTrajectoryInferMethod):
         sc.pp.normalize_total(data, target_sum=1e4)
         sc.pp.log1p(data)
 
-    def _subclass_train(self, X_train, y_train, traj_infer_path):
+    def _subclass_train(self, X_train, y_train, traj_infer_path, test_ann_data):
         """
         Train a CellTypist model and cache it to disk.
         """
@@ -163,3 +166,69 @@ class CellTypist(BaseTrajectoryInferMethod):
         logging.debug(f"Probability matrix: {predictions.probability_matrix}")
         logging.debug(f"Probability matrix labels: {labels}")
         return probs, labels
+
+
+class Scimilarity(BaseTrajectoryInferMethod):
+    def __init__(self, traj_config):
+        super().__init__(traj_config)
+        self.classifier = None
+
+    def _subclass_parameters(self):
+        return {
+            "scimilarity_model_path": self.traj_config.get(
+                "scimilarity_model_path", "./data/scimilarity/annotation_model_v1/"
+            ),
+        }
+
+    def _preprocess(self, data):
+        sc.pp.normalize_total(data, target_sum=1e4)
+        sc.pp.log1p(data)
+
+    def _subclass_train(self, X_train, y_train, traj_infer_path, test_ann_data):
+        """
+        Fine-tuning for scimilarity (to be implemented).
+        For now, let's just use the existing foundation model because
+        fine-tuning is expensive.
+        """
+
+        # first let's just print out the vars
+        gene_symbols = test_ann_data.var["gene_symbols"]
+
+        import scimilarity
+        from scimilarity import CellAnnotation
+
+        logging.debug(f"Index that is used in source: {test_ann_data.var.index}")
+
+        # the index used is not what we want, we want to use gene symbols instead...
+        # so let's redo this with the index being changed
+        test_ann_data.var.index = gene_symbols
+
+        ca = CellAnnotation(model_path=self._parameters()["scimilarity_model_path"])
+        logging.debug(f"Layers: {test_ann_data.layers.keys()}")
+        # this is so fucking weird, I don't know why we do this shit
+        test_ann_data.layers[
+            "counts"
+        ] = test_ann_data.X.copy()  # ensure we have the counts layer for scimilarity
+        test_ann_data = scimilarity.align_dataset(test_ann_data, ca.gene_order)
+        test_ann_data = scimilarity.lognorm_counts(test_ann_data)
+
+        test_ann_data.obsm["X_scimilarity"] = ca.get_embeddings(test_ann_data.X)
+
+        predictions, nn_idxs, nn_dists, nn_stats = ca.get_predictions_knn(
+            test_ann_data.obsm["X_scimilarity"], weighting=True
+        )
+        test_ann_data.obs["predictions_unconstrained"] = predictions.values
+        logging.debug(f"Predictions: {predictions}")
+
+        # logging.debug(f'CA gene order: {ca.gene_order}')
+        raise ValueError(f"Debugging stop-point...")
+
+    def _subclass_predict_probs(self, embeds):
+        """
+        Predict probabilities using the existing scimilarity model.
+        """
+
+        # first, let's get the var names from the test ann data
+        test_ann_data = load_test_dataset()
+
+        pred_adata = ad.AnnData(X=embeds)
