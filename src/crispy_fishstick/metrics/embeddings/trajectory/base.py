@@ -175,9 +175,7 @@ class ClassifierMetrics(TrajectoryEmbeddingMetrics):
 
         self.trajectory_infer_model: BaseTrajectoryInferMethod = (
             TrajectoryInferenceMethodFactory().get_trajectory_infer_method(
-                self.metric_config.get(
-                    "trajectory_infer_model", {"name": Classifier.__name__}
-                )
+                self.metric_config.get("trajectory_infer_model", {})
             )
         )
         self.params["trajectory_infer_model"] = str(self.trajectory_infer_model)
