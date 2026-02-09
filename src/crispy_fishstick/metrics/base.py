@@ -141,6 +141,16 @@ class BaseMetric:
         Subclasses should implement the method `_submetric_eval` to evaluate the metric
         based on the model outputs and the dataset.
         """
+        # skip the metric if it's in the skip registry, unless it's force rerun
+        if (
+            self.__class__.__name__ in SKIP_METRIC_REGISTRY
+            and not self.config.force_rerun
+        ):
+            logging.info(
+                f"Skipping metric {self.__class__.__name__} as it is marked to be skipped."
+            )
+            return
+
         # assert that the preprocessing was done correctly
         # we assume that each model corresponds to a dataset
         assert len(self.models) == len(
@@ -341,8 +351,10 @@ class BaseMetric:
         """
         if self.submetrics:
             for submetric in self.submetrics:
-                # pass in the trajectory inference model as part of the config
-                if submetric.__name__ in SKIP_METRIC_REGISTRY:
+                if (
+                    submetric.__name__ in SKIP_METRIC_REGISTRY
+                    and not self.config.force_rerun
+                ):
                     logging.info(
                         f"Skipping metric {submetric.__name__} as it is marked to be skipped."
                     )

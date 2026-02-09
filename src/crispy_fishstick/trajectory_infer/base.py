@@ -22,7 +22,7 @@ import json
 import hashlib
 import os
 
-DEFAULT_METHOD = "Classifier"
+DEFAULT_METHOD = "CellTypist"
 TRAJECTORY_INFER_METHOD_REGISTRY = {}
 INFERRED_TRAJ_DIR = "trajectory_infer"
 INFERRED_TRAJ_FILE = "inferred_trajectory.json"

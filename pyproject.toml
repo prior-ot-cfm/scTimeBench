@@ -32,6 +32,9 @@ benchmark = [
 graphviz = [
     "graphviz"
 ]
+celltypist = [
+    "celltypist"
+]
 
 [project.scripts]
 crispy_fishstick = "crispy_fishstick.main:main"
