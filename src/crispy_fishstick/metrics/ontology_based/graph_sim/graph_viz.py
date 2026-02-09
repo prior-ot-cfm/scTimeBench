@@ -2,7 +2,6 @@ from crispy_fishstick.metrics.ontology_based.graph_sim.base import (
     GraphSimMetric,
     AdjacencyMatrixType,
     CELL_TYPE_TO_ID_KEY,
-    DATASET_NAME_KEY,
 )
 from crispy_fishstick.shared.utils import load_test_dataset
 from crispy_fishstick.shared.constants import ObservationColumns
@@ -46,21 +45,24 @@ class GraphVisualization(GraphSimMetric):
         # take the reverse dictionary
         cell_id_to_type = {v: k for k, v in graph_ref[CELL_TYPE_TO_ID_KEY].items()}
 
-        build_graph_image(
-            graph_ref[AdjacencyMatrixType.UNWEIGHTED],
-            cell_id_to_type,
-            os.path.join(self.output_path, "reference_graph"),
-        )
+        ref_graph_output = os.path.join(self.classifier_dir, "reference_graph")
+
+        if not os.path.exists(ref_graph_output + ".png"):
+            build_graph_image(
+                graph_ref[AdjacencyMatrixType.UNWEIGHTED],
+                cell_id_to_type,
+                ref_graph_output,
+            )
         build_graph_image(
             graph_pred[AdjacencyMatrixType.WEIGHTED],
             cell_id_to_type,
-            os.path.join(self.output_path, "predicted_graph"),
+            os.path.join(self.traj_dir, "predicted_graph"),
             is_weighted=True,
         )
         build_graph_image(
             graph_pred[AdjacencyMatrixType.UNWEIGHTED],
             cell_id_to_type,
-            os.path.join(self.output_path, "predicted_unweighted_graph"),
+            os.path.join(self.traj_dir, "predicted_unweighted_graph"),
         )
 
         return  # Visualization metric does not return a numeric score
@@ -213,15 +215,19 @@ class StackedDensityPlot(GraphSimMetric):
         # ignore the debug of matplotlib
         logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
-        plot_stacked_density(
-            source_df,
-            os.path.join(self.output_path, "source_stacked_density_plot.png"),
-            f"True Cell Type Proportions Over Time for {graph_ref[DATASET_NAME_KEY]}",
+        ref_plot_output = os.path.join(
+            self.classifier_dir, "reference_stacked_density_plot.png"
         )
+        if not os.path.exists(ref_plot_output):
+            plot_stacked_density(
+                source_df,
+                ref_plot_output,
+                f"True Cell Type Proportions Over Time for {self.dataset_name}",
+            )
         plot_stacked_density(
             target_df,
-            os.path.join(self.output_path, "target_stacked_density_plot.png"),
-            f'Predicted Target Cell Type Proportions Over Time for {self.config.model["name"]} on {graph_ref[DATASET_NAME_KEY]}',
+            os.path.join(self.traj_dir, "target_stacked_density_plot.png"),
+            f'Predicted Target Cell Type Proportions Over Time for {self.config.model["name"]} on {self.dataset_name}',
         )
 
         return  # Visualization metric does not return a numeric score

@@ -13,6 +13,18 @@ from geomloss import SamplesLoss
 class OptimalTransport(BaseTrajectoryInferMethod):
     def __init__(self, traj_config):
         super().__init__(traj_config)
+        logging.warning(
+            f'Deprecated classifier "OptimalTransport" is being used. Please switch to "Classifier" with scikit-learn based classifiers for better performance and maintainability.'
+        )
+
+    def supports_gex(self):
+        """
+        By default OT does not have enough capacity to support gene expression data,
+        as it is primarily designed for embedding-based trajectory inference.
+        This is because OT can be computationally intensive and may not scale well
+        with high-dimensional gene expression data, leading to longer runtimes and potential memory issues.
+        """
+        return False
 
     def _subclass_parameters(self):
         return {

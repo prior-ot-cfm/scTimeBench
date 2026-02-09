@@ -1,6 +1,12 @@
+datasets:
+  - tag: defaultGarciaAlonso
+
 model:
   name: scNODE
   train_and_test_script: ./models/scNODE/train_and_test.sh
 
 metrics:
- - name: BaseMetric
+ - name: GraphVisualization
+   trajectory_infer_model:
+    model_classifier: true
+ - name: StackedDensityPlot
