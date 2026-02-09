@@ -211,7 +211,7 @@ class BaseTrajectoryInferMethod:
         """
         # ** Note: we just redo the preparation so classifier_save_path can be used **
         # ** This is not a big deal because we already have caching in the first place **
-        test_ann_data = self._prep_data(output_path)
+        test_ann_data = load_test_dataset(output_path)
         traj_infer_path, classifier_save_path = self._get_traj_infer_path(output_path)
 
         # now we also write the traj_config to file for future reference
@@ -250,7 +250,7 @@ class BaseTrajectoryInferMethod:
 
         We store everything under traj_infer_path/k_fold_<k>/fold_<i>/
         """
-        test_ann_data = self._prep_data(output_path)
+        test_ann_data = load_test_dataset(output_path)
         _, classifier_save_path = self._get_traj_infer_path(output_path)
         k_fold_path = os.path.join(classifier_save_path, f"k_fold_{k}")
         os.makedirs(k_fold_path, exist_ok=True)
