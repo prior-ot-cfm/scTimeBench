@@ -1,0 +1,4 @@
+Early tip => Tip => Acinar
+
+Early trunk => Trunk => Duct
+               Trunk => EP
