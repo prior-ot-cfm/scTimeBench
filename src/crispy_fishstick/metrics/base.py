@@ -378,43 +378,60 @@ class BaseMetric:
         ), "If datasets are not specified in the config, the metric subclass must define default_datasets_path."
 
         with open(self.default_datasets_path, "r") as f:
-            default_datasets = yaml.safe_load(f)["datasets"]
+            default_dataset_config = yaml.safe_load(f) or {}
+
+        default_datasets = default_dataset_config.get("datasets", [])
+        metric_groups = default_dataset_config.get("metric_groups", {})
+
+        # backward-compatible behavior: if metric_groups are absent or this metric group
+        # isn't defined, we keep using all default datasets
+        default_dataset_tags = None
+        if hasattr(self, "default_dataset_group"):
+            group_config = metric_groups.get(self.default_dataset_group, {})
+            default_dataset_tags = group_config.get("dataset_tags", None)
 
         # now we check if datasets are specified in the config
         if not hasattr(self.config, "datasets") or len(self.config.datasets) == 0:
-            # datasets are not specified, we use the default datasets
-            self.config.datasets = default_datasets
+            # datasets are not specified, we use defaults for the metric group when present,
+            # otherwise all defaults
+            if default_dataset_tags is not None:
+                requested_datasets = [{"tag": tag} for tag in default_dataset_tags]
+            else:
+                requested_datasets = default_datasets
+        else:
+            requested_datasets = self.config.datasets
 
-        # then we check if any dataset only has a "tag" specified
-        new_datasets = []
-        for dataset in self.config.datasets:
+        # resolve any tag references to full dataset definitions
+        resolved_datasets = []
+        for dataset in requested_datasets:
             if "tag" in dataset:
-                # we need to find the matching dataset from the default datasets
                 matching_datasets = [
                     d for d in default_datasets if d.get("tag", None) == dataset["tag"]
                 ]
                 assert (
                     len(matching_datasets) == 1
                 ), f"Dataset with tag {dataset['tag']} not found or multiple found in default datasets."
-                new_datasets.append(matching_datasets[0])
+                dataset_def = matching_datasets[0]
             else:
-                new_datasets.append(dataset)
+                dataset_def = dataset
 
-        # now we modify the data paths if a data_dir is specified
-        if hasattr(self.config, "data_dir"):
-            for dataset in new_datasets:
-                # if the data_path is not absolute, we join it with data_dir
-                if os.path.isabs(dataset["data_path"]):
-                    continue
-                dataset["data_path"] = os.path.join(
-                    self.config.data_dir, dataset["data_path"]
-                )
+            data_path = dataset_def["data_path"]
+            if hasattr(self.config, "data_dir") and not os.path.isabs(data_path):
+                data_path = os.path.join(self.config.data_dir, data_path)
 
-        # finally, we want to remove the tag associated with each dataset
-        # to ensure that the model caches are consistent
-        self.config.datasets = [
-            {k: v for k, v in dataset.items() if k != "tag"} for dataset in new_datasets
-        ]
+            resolved_datasets.append(
+                {
+                    **{
+                        k: v
+                        for k, v in dataset_def.items()
+                        if k not in ["tag", "data_path"]
+                    },
+                    "data_path": data_path,
+                }
+            )
+
+        # ensure that the model caches are consistent and independent of tag aliases
+        self.config.datasets = resolved_datasets
 
         logging.debug("-" * 50 + "Datasets" + "-" * 50)
         logging.debug(self.config.datasets)
