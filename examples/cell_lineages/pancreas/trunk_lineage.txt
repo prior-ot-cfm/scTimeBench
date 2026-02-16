@@ -1,0 +1,2 @@
+Early trunk => Trunk => Duct
+               Trunk => EP

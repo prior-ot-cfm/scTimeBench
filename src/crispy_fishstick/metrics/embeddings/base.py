@@ -17,9 +17,11 @@ class EmbeddingMetrics(BaseMetric):
             GarciaAlonsoDataset.__name__,
         ]
 
-        # get the path to the default datasets, under ./default_datasets.yaml
+        self.default_dataset_group = "embeddings"
+
+        # get the path to the shared default datasets config
         self.default_datasets_path = os.path.join(
-            os.path.dirname(__file__), "default_datasets.yaml"
+            os.path.dirname(__file__), "..", "shared", "default_datasets.yaml"
         )
 
     def _defaults(self):
