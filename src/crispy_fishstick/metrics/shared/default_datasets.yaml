@@ -1,4 +1,4 @@
-# this defines the default datasets to use for ontology-based metrics
+# this defines the default datasets and group-specific defaults for metrics
 datasets:
   - name: SuoDataset
     tag: defaultSuo
@@ -18,3 +18,13 @@ datasets:
       - name: LineageDatasetFilter
         cell_lineage_file: ./examples/cell_lineages/germ/cell_line.txt
       - name: CopySplitFilter
+
+metric_groups:
+  embeddings:
+    dataset_tags:
+      - defaultSuo
+      - defaultGarciaAlonso
+  ontology_based:
+    dataset_tags:
+      - defaultSuo
+      - defaultGarciaAlonso
