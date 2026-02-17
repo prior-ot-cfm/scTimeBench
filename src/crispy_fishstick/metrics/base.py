@@ -441,7 +441,14 @@ class BaseMetric:
         # if not, we simply take the ones that are supported
         dataset_for_metric = []
         for dataset in self.config.datasets:
-            if dataset["name"] in self.supported_datasets:
+            dataset_name = dataset.get("name")
+            if dataset_name is None:
+                raise ValueError(
+                    "Invalid dataset configuration: missing required key 'name'. "
+                    f"Dataset entry: {dataset}"
+                )
+
+            if dataset_name in self.supported_datasets:
                 dataset_for_metric.append(dataset)
             else:
                 logging.warning(
