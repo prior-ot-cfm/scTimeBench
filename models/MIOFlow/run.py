@@ -164,7 +164,8 @@ class MIOFlow(BaseModel):
 
         if os.path.exists(cache_path):
             print("Trained MIOFlow model found, loading from file.")
-            cache = torch.load(cache_path, map_location="cpu")
+            # Cache contains a fitted sklearn PCA object; allow full unpickling for trusted cache files.
+            cache = torch.load(cache_path, map_location="cpu", weights_only=False)
             cached_tps = cache.get("all_tps")
             if (
                 expected_tps is not None
@@ -398,6 +399,32 @@ class MIOFlow(BaseModel):
         self._cached_embeddings = (embeds, next_embeds, cell_tps, unique_tps)
         return self._cached_embeddings
 
+    def _embeds_to_gene_expression(self, embeds: np.ndarray) -> np.ndarray:
+        if self.pca is None:
+            raise ValueError("PCA model not available for gene expression output.")
+
+        gex_dim = self.pca.n_features_in_
+        gene_expr = np.full((embeds.shape[0], gex_dim), np.nan, dtype=np.float32)
+        valid_mask = ~np.isnan(embeds).any(axis=1)
+        if not np.any(valid_mask):
+            return gene_expr
+
+        valid_embeds = embeds[valid_mask]
+        if self.use_gae and self.autoencoder is not None:
+            self.autoencoder.eval()
+            with torch.no_grad():
+                decoded = (
+                    self.autoencoder.decode(torch.FloatTensor(valid_embeds))
+                    .cpu()
+                    .numpy()
+                )
+            pca_space = decoded
+        else:
+            pca_space = valid_embeds
+
+        gene_expr[valid_mask] = self.pca.inverse_transform(pca_space)
+        return gene_expr
+
     def generate_embedding(self, test_ann_data) -> np.ndarray:
         """
         Generate embeddings for the current timepoint.
@@ -411,6 +438,13 @@ class MIOFlow(BaseModel):
         """
         _, next_embeds, _, _ = self._generate_all_embeddings(test_ann_data)
         return next_embeds
+
+    def generate_next_tp_gex(self, test_ann_data) -> np.ndarray:
+        """
+        Generate gene expression for the next timepoint.
+        """
+        _, next_embeds, _, _ = self._generate_all_embeddings(test_ann_data)
+        return self._embeds_to_gene_expression(next_embeds)
 
 
 if __name__ == "__main__":
