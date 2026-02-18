@@ -4,12 +4,16 @@ Classifier implementation for trajectory inference.
 from crispy_fishstick.trajectory_infer.base import (
     BaseTrajectoryInferMethod,
 )
+from crispy_fishstick.shared.constants import ObservationColumns
 from enum import Enum
 import logging
 
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 import joblib
 import os
+import numpy as np
+import anndata as ad
+import scanpy as sc
 
 
 CLASSIFIER_SAVE_FILE = "classifier_model.pkl"
@@ -81,3 +85,81 @@ class Classifier(BaseTrajectoryInferMethod):
 
         # turn the index to cell types mapping
         return test_probas, list(self.classifier.classes_)
+
+
+class CellTypist(BaseTrajectoryInferMethod):
+    def __init__(self, traj_config):
+        super().__init__(traj_config)
+        self.label_key = ObservationColumns.CELL_TYPE.value
+        self.classifier = None
+
+    def _subclass_parameters(self):
+        return {
+            "n_jobs": self.traj_config.get("n_jobs", 10),
+            "max_iter": self.traj_config.get("max_iter", 1000),
+        }
+
+    def _preprocess(self, data):
+        sc.pp.normalize_total(data, target_sum=1e4)
+        sc.pp.log1p(data)
+
+    def _subclass_train(self, X_train, y_train, traj_infer_path):
+        """
+        Train a CellTypist model and cache it to disk.
+        """
+        model_path = os.path.join(traj_infer_path, CLASSIFIER_SAVE_FILE)
+
+        if os.path.exists(model_path):
+            logging.debug("Loading existing CellTypist model from disk.")
+            self.classifier = joblib.load(model_path)
+            return
+
+        import celltypist
+
+        train_adata = ad.AnnData(X=X_train)
+        train_adata.obs[self.label_key] = np.array(y_train)
+
+        # turn off numba
+        logging.getLogger("numba").setLevel(logging.WARNING)
+        try:
+            self.classifier = celltypist.train(
+                train_adata,
+                labels=self.label_key,
+                n_jobs=self._parameters()["n_jobs"],
+                max_iter=self._parameters()["max_iter"],
+            )
+        except ValueError as e:
+            logging.error(f"Error during CellTypist training: {e}")
+            # this likely happens because of preprocessing issue, so let's try training with preprocessing as a fallback
+            self._preprocess(train_adata)
+            self.classifier = celltypist.train(
+                train_adata,
+                labels=self.label_key,
+                n_jobs=self._parameters()["n_jobs"],
+                max_iter=self._parameters()["max_iter"],
+            )
+
+        joblib.dump(self.classifier, model_path)
+        logging.debug(f"Saved CellTypist model to {model_path}")
+
+    def _subclass_predict_probs(self, embeds):
+        """
+        Predict probabilities using a trained CellTypist model.
+        """
+        assert self.classifier is not None, "CellTypist model is not trained."
+
+        import celltypist
+
+        pred_adata = ad.AnnData(X=embeds)
+        self._preprocess(pred_adata)
+        predictions = celltypist.annotate(
+            pred_adata,
+            model=self.classifier,
+            majority_voting=True,
+        )
+
+        probs = predictions.probability_matrix.to_numpy()
+        labels = predictions.probability_matrix.columns.tolist()
+        logging.debug(f"Probability matrix: {predictions.probability_matrix}")
+        logging.debug(f"Probability matrix labels: {labels}")
+        return probs, labels

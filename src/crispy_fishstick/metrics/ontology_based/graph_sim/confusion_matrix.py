@@ -1,7 +1,6 @@
 from crispy_fishstick.metrics.ontology_based.graph_sim.base import (
     GraphSimMetric,
     AdjacencyMatrixType,
-    DATASET_NAME_KEY,
 )
 from crispy_fishstick.metrics.ontology_based.graph_sim.utils import floyd_warshall
 from sklearn.metrics import classification_report, roc_auc_score
@@ -80,8 +79,8 @@ class GraphClassificationReport(GraphSimMetric):
                 "auc_roc": get_threshold_roc(
                     graph_weighted_pred_adj,
                     graph_ref_adj,
-                    title=f"Threshold ROC Curve of {self.config.model['name']} on {graph_ref[DATASET_NAME_KEY]}",
-                    output_file=graph_pred["output_path"] + "/roc_curve.png",
+                    title=f"Threshold ROC Curve of {self.config.model['name']} on {self.dataset_name}",
+                    output_file=self.traj_dir + "/roc_curve.png",
                 ),
             }
         )
@@ -118,8 +117,8 @@ class GraphClassificationReportAllPaths(GraphSimMetric):
                 "auc_roc": get_threshold_roc(
                     graph_weighted_pred_paths,
                     graph_ref_paths,
-                    title=f"All Paths Threshold ROC Curve of {self.config.model['name']} on {graph_ref[DATASET_NAME_KEY]}",
-                    output_file=graph_pred["output_path"] + "/all_paths_roc_curve.png",
+                    title=f"All Paths Threshold ROC Curve of {self.config.model['name']} on {self.dataset_name}",
+                    output_file=self.traj_dir + "/all_paths_roc_curve.png",
                 ),
             }
         )
