@@ -28,14 +28,11 @@ def parse_equivalence(file_path):
     # for each row in the file:
     for row in content.splitlines():
         # Split by , and clean up first
-        cells = [cell.strip() for cell in row.split(",") if cell.strip()]
+        canonical, aliases = [cell.strip() for cell in row.split("<=") if cell.strip()]
+        aliases = [cell.strip() for cell in aliases.split(",") if cell.strip()]
 
-        if not cells:
+        if not aliases:
             continue
-
-        # first cell is canonical, all following are aliases
-        canonical = cells[0]
-        aliases = cells[1:]
 
         for alias in aliases:
             if alias:
