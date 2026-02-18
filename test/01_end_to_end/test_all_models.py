@@ -64,7 +64,6 @@ def test_config_execution(config_path, workspace, run_bench):
 
     output_required_files.update(
         [
-            "dataset.pkl",
             "model_config.yaml",
         ]
     )

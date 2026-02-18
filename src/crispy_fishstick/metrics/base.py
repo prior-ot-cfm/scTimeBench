@@ -14,6 +14,7 @@ from crispy_fishstick.shared.dataset.base import (
 from crispy_fishstick.shared.constants import (
     RequiredOutputFiles,
     PICKLED_DATASET_FILENAME,
+    MODEL_CONFIG_FILENAME,
 )
 from crispy_fishstick.database import DatabaseManager
 
@@ -54,7 +55,6 @@ class BaseMetric:
         self.db_manager = db_manager
         self.config = config
         self.metric_config = metric_config
-        self.MODEL_CONFIG_FILENAME = "model_config.yaml"
         self.params = {}
 
         # skip the preprocessing steps if it has submetrics, as they will handle it themselves
@@ -141,6 +141,16 @@ class BaseMetric:
         Subclasses should implement the method `_submetric_eval` to evaluate the metric
         based on the model outputs and the dataset.
         """
+        # skip the metric if it's in the skip registry, unless it's force rerun
+        if (
+            self.__class__.__name__ in SKIP_METRIC_REGISTRY
+            and not self.config.force_rerun
+        ):
+            logging.info(
+                f"Skipping metric {self.__class__.__name__} as it is marked to be skipped."
+            )
+            return
+
         # assert that the preprocessing was done correctly
         # we assume that each model corresponds to a dataset
         assert len(self.models) == len(
@@ -198,7 +208,7 @@ class BaseMetric:
 
                 if not required_outputs_exist:
                     model.train_and_test(
-                        os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+                        os.path.join(output_path, MODEL_CONFIG_FILENAME)
                     )
                 else:
                     logging.info(
@@ -277,10 +287,6 @@ class BaseMetric:
         # to make our lives easier, we will also pickle our current dataset object
         # and store this in the output directory as well
         # so that the model can load this dataset object directly for training and testing
-        pickled_dataset_path = os.path.join(output_path, PICKLED_DATASET_FILENAME)
-        with open(pickled_dataset_path, "wb") as f:
-            pickle.dump(dataset, f)
-
         assert hasattr(
             self, "required_outputs"
         ), "Subclasses must define required_outputs attribute."
@@ -311,7 +317,9 @@ class BaseMetric:
 
         yaml_config = {
             "output_path": output_path,
-            "dataset_pkl_path": pickled_dataset_path,
+            "dataset_pkl_path": os.path.join(
+                dataset.get_dataset_dir(), PICKLED_DATASET_FILENAME
+            ),
             "model": self.config.model_yaml_data,
             "required_outputs": required_outputs_serialized,
             "datasets": dataset.encode_dataset_dict(),
@@ -319,7 +327,7 @@ class BaseMetric:
         }
 
         # write out the yaml config file for the model
-        yaml_config_path = os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+        yaml_config_path = os.path.join(output_path, MODEL_CONFIG_FILENAME)
         with open(yaml_config_path, "w") as f:
             yaml.safe_dump(yaml_config, f)
 
@@ -343,8 +351,10 @@ class BaseMetric:
         """
         if self.submetrics:
             for submetric in self.submetrics:
-                # pass in the trajectory inference model as part of the config
-                if submetric.__name__ in SKIP_METRIC_REGISTRY:
+                if (
+                    submetric.__name__ in SKIP_METRIC_REGISTRY
+                    and not self.config.force_rerun
+                ):
                     logging.info(
                         f"Skipping metric {submetric.__name__} as it is marked to be skipped."
                     )
@@ -501,9 +511,46 @@ class BaseMetric:
             # now we create a dataset instance with the appropriate filters
             self.datasets.append(
                 DATASET_REGISTRY[dataset["name"]](
-                    dataset, [builder(dataset) for builder in builders]
+                    dataset,
+                    [builder(dataset) for builder in builders],
+                    self.config.output_dir,
                 )
             )
+
+        # 4) Then we insert these datasets into the database if they don't already exist,
+        # and we also create their dataset directories
+        for dataset in self.datasets:
+            self.db_manager.insert_dataset(dataset)
+            logging.debug(
+                f"Processing dataset: {dataset} to {dataset.get_dataset_dir()}"
+            )
+            dataset.create_dataset_dir()
+            # TODO: in this dataset directory, we can then store the base metrics we have
+            # such as the base visualization, etc.
+            # for now, let's just store the dataset object itself, and the model can load this for its own use
+            pickled_dataset_path = os.path.join(
+                dataset.get_dataset_dir(), PICKLED_DATASET_FILENAME
+            )
+            with open(pickled_dataset_path, "wb") as f:
+                pickle.dump(dataset, f)
+
+            # write out the dataset information to the directory as well
+            with open(
+                os.path.join(dataset.get_dataset_dir(), "dataset_info.yaml"), "w"
+            ) as f:
+                yaml.safe_dump(
+                    {
+                        "dataset_dict": dataset.dataset_dict,
+                        "dataset_filters": [
+                            {
+                                "name": type(f).__name__,
+                                "parameters": f._parameters(),
+                            }
+                            for f in dataset.dataset_filters
+                        ],
+                    },
+                    f,
+                )
 
         # verify that the datasets are properly initialized
         # TODO: add a unit test for this!

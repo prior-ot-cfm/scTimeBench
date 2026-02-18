@@ -7,7 +7,11 @@ and its timepoints, we want to infer the trajectory structure.
 Examples are the kNN graph-based methods, or the optimal transport based methods.
 """
 from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputFiles
-from crispy_fishstick.shared.utils import load_test_dataset, load_output_file
+from crispy_fishstick.shared.utils import (
+    load_test_dataset,
+    load_output_file,
+    get_dataset,
+)
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from typing import final
@@ -18,7 +22,7 @@ import json
 import hashlib
 import os
 
-DEFAULT_METHOD = "Classifier"
+DEFAULT_METHOD = "CellTypist"
 TRAJECTORY_INFER_METHOD_REGISTRY = {}
 INFERRED_TRAJ_DIR = "trajectory_infer"
 INFERRED_TRAJ_FILE = "inferred_trajectory.json"
@@ -40,22 +44,30 @@ class BaseTrajectoryInferMethod:
     def __init__(self, traj_config):
         # very simply, this will have the ann_data object
         self.traj_config = traj_config
+
+        # we shift the paradigm slightly -- model classifier MUST use embeddings because
+        # otherwise it's equivalent to the dataset classifier which is trained on gex
+        self.model_classifier = self.traj_config.get("model_classifier", False)
+
         # we want this to run either that the method support gene expression
         # if we are using gene expression, or if we're not using gene expression,
         # then it doesn't error out
-        assert self.uses_gene_expr() or not self.traj_config.get(
-            "use_gene_expr", False
+        assert (
+            self.supports_gex() or self.model_classifier
         ), f"Trajectory inference method {self.__class__.__name__} does not support gene expression data."
 
     def __init_subclass__(cls):
         register_trajectory_inference_method(cls)
 
     def uses_gene_expr(self):
+        return not self.model_classifier
+
+    def supports_gex(self):
         """
-        Function to be overwritten if the trajectory inference method uses gene expression data.
+        Function to be overwritten if the trajectory inference method can support
         By default, we assume it does not.
         """
-        return False
+        return True
 
     def _method_infer_trajectory(self, ann_data):
         raise NotImplementedError("Subclasses should implement this method.")
@@ -71,7 +83,7 @@ class BaseTrajectoryInferMethod:
         return {
             "test_size": self.traj_config.get("test_size", 0.2),
             "random_state": self.traj_config.get("random_state", 42),
-            "use_gene_expr": self.traj_config.get("use_gene_expr", False),
+            "model_classifier": self.traj_config.get("model_classifier", False),
             **self._subclass_parameters(),
         }
 
@@ -95,7 +107,7 @@ class BaseTrajectoryInferMethod:
 
     def _get_next_tp_tensors(self, output_path, test_ann_data):
         """
-        Based on the use_gene_expr property, get the proper tensors for trajectory inference.
+        Based on the model_classifier property, get the proper tensors for trajectory inference.
 
         We want to return:
         - Predicted gene expr/embedding at time t (for (1, last t))
@@ -103,7 +115,7 @@ class BaseTrajectoryInferMethod:
         timepoints = test_ann_data.obs[ObservationColumns.TIMEPOINT.value]
         valid_timepoints = np.where(timepoints < timepoints.max())[0]
 
-        if self._parameters()["use_gene_expr"]:
+        if self.uses_gene_expr():
             next_tp_gex = load_output_file(
                 output_path, RequiredOutputFiles.NEXT_TIMEPOINT_GENE_EXPRESSION
             )
@@ -116,12 +128,12 @@ class BaseTrajectoryInferMethod:
 
     def _get_cur_tp_tensors(self, output_path, test_ann_data):
         """
-        Based on the use_gene_expr property, get the proper tensors for trajectory inference.
+        Based on the model_classifier property, get the proper tensors for trajectory inference.
 
         We want to return:
         - Original gene expr/embedding at time t (for all t)
         """
-        if self._parameters()["use_gene_expr"]:
+        if self.uses_gene_expr():
             return test_ann_data.X.toarray()
         else:
             return load_output_file(output_path, RequiredOutputFiles.EMBEDDING)
@@ -129,10 +141,26 @@ class BaseTrajectoryInferMethod:
     def _get_traj_infer_path(self, output_path):
         """
         Get the trajectory inference path based on the hashed config.
+
+        This will depend on whether it's a model classifier or a dataset classifier.
+        Because if it's a dataset classifier we'll put the classifier in the datasets/
+        folder, otherwise, we put it in the model outputs folder.
+
+        Returns:
+            - the path to save the trajectory inference path
+            - the path to save the classifier under (same as traj_infer_path if model classifier)
         """
         traj_infer_path = os.path.join(output_path, INFERRED_TRAJ_DIR, self.encode())
         os.makedirs(traj_infer_path, exist_ok=True)
-        return traj_infer_path
+        if self.model_classifier:
+            return traj_infer_path, traj_infer_path
+
+        dataset, _ = get_dataset(output_path)
+        classifier_save_path = os.path.join(
+            dataset.get_dataset_dir(), INFERRED_TRAJ_DIR, self.encode()
+        )
+        os.makedirs(classifier_save_path, exist_ok=True)
+        return traj_infer_path, classifier_save_path
 
     def _prep_data(self, output_path):
         """
@@ -177,22 +205,18 @@ class BaseTrajectoryInferMethod:
         return test_ann_data
 
     @final
-    def train_and_predict(
-        self, output_path, test_ann_data=None, traj_infer_path=None, train_only=False
-    ):
+    def train_and_predict(self, output_path, train_only=False):
         """
         Trains and predicts using the trajectory inference model.
-
-        Note that we can specify test_ann_data and traj_infer_path directly to avoid
-        re-loading and re-prepping the data if already done, as well as train_only.
         """
-        if test_ann_data is None or traj_infer_path is None:
-            test_ann_data = self._prep_data(output_path)
-            traj_infer_path = self._get_traj_infer_path(output_path)
+        # ** Note: we just redo the preparation so classifier_save_path can be used **
+        # ** This is not a big deal because we already have caching in the first place **
+        test_ann_data = load_test_dataset(output_path)
+        traj_infer_path, classifier_save_path = self._get_traj_infer_path(output_path)
 
-            # now we also write the traj_config to file for future reference
-            with open(os.path.join(traj_infer_path, TRAJ_CONFIG_FILE), "w") as f:
-                f.write(str(self))
+        # now we also write the traj_config to file for future reference
+        with open(os.path.join(traj_infer_path, TRAJ_CONFIG_FILE), "w") as f:
+            f.write(str(self))
 
         # we use the same cached trajectory path so that way we can save classifiers
         # in the future if needed, as it takes time to fit
@@ -211,7 +235,7 @@ class BaseTrajectoryInferMethod:
 
         # load the classifier model or train a new one if not exists
         logging.debug(f"Training trajectory inference model {self.__class__.__name__}.")
-        self._subclass_train(X_train, y_train, traj_infer_path)
+        self._subclass_train(X_train, y_train, classifier_save_path)
         logging.debug(
             f"Predicting trajectory inference model {self.__class__.__name__}."
         )
@@ -226,9 +250,9 @@ class BaseTrajectoryInferMethod:
 
         We store everything under traj_infer_path/k_fold_<k>/fold_<i>/
         """
-        test_ann_data = self._prep_data(output_path)
-        traj_infer_path = self._get_traj_infer_path(output_path)
-        k_fold_path = os.path.join(traj_infer_path, f"k_fold_{k}")
+        test_ann_data = load_test_dataset(output_path)
+        _, classifier_save_path = self._get_traj_infer_path(output_path)
+        k_fold_path = os.path.join(classifier_save_path, f"k_fold_{k}")
         os.makedirs(k_fold_path, exist_ok=True)
 
         # we use the same cached trajectory path so that way we can save classifiers
@@ -271,7 +295,7 @@ class BaseTrajectoryInferMethod:
         """
         if test_ann_data is None or traj_infer_path is None:
             test_ann_data = self._prep_data(output_path)
-            traj_infer_path = self._get_traj_infer_path(output_path)
+            traj_infer_path, _ = self._get_traj_infer_path(output_path)
 
         logging.debug(
             f"Predicting next timepoint with method: {self.__class__.__name__} and config: {self.traj_config}"
@@ -319,7 +343,7 @@ class BaseTrajectoryInferMethod:
         embedding space.
         3. Finally, we consolidate the cell types per time point based on the kNN results.
         """
-        traj_infer_path = self._get_traj_infer_path(output_path)
+        traj_infer_path, _ = self._get_traj_infer_path(output_path)
         logging.debug(
             f"Inferring trajectory with method: {self.__class__.__name__} and config: {self.traj_config}"
         )
@@ -391,9 +415,7 @@ class BaseTrajectoryInferMethod:
             # we need to do the train_only option here instead of calling _train directly
             # because it does some preprocessing we don't want to repeat
             # this trains a classifier on all the data points
-            self.train_and_predict(
-                output_path, test_ann_data, traj_infer_path, train_only=True
-            )
+            self.train_and_predict(output_path, train_only=True)
             logging.debug(
                 f"Inferring trajectory using trajectory inference model: {self.__class__.__name__}"
             )

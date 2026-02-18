@@ -7,9 +7,7 @@ from crispy_fishstick.shared.helpers import parse_cell_lineage
 from crispy_fishstick.shared.dataset.filters.lineage import LineageDatasetFilter
 from crispy_fishstick.shared.dataset.base import BaseDataset
 from crispy_fishstick.trajectory_infer.base import TrajectoryInferenceMethodFactory
-
 import numpy as np
-
 import logging
 
 
@@ -19,8 +17,6 @@ class AdjacencyMatrixType:
 
 
 CELL_TYPE_TO_ID_KEY = "cell_type_to_id"
-DATASET_NAME_KEY = "dataset_name"
-OUTPUT_PATH_KEY = "output_path"
 
 
 class GraphSimMetric(OntologyBasedMetrics):
@@ -106,7 +102,6 @@ class GraphSimMetric(OntologyBasedMetrics):
         return {
             AdjacencyMatrixType.UNWEIGHTED: adjacency_matrix,
             CELL_TYPE_TO_ID_KEY: cell_type_to_id,
-            DATASET_NAME_KEY: dataset.get_name(),
         }
 
     def _build_pred_graph(self, output_path, cell_type_to_id):
@@ -159,12 +154,19 @@ class GraphSimMetric(OntologyBasedMetrics):
         return {
             AdjacencyMatrixType.WEIGHTED: weighted_adjacency_matrix,
             AdjacencyMatrixType.UNWEIGHTED: adjacency_matrix,
-            OUTPUT_PATH_KEY: output_path,
         }
 
     def _prep_kwargs_for_submetric_eval(self, output_path, dataset, model):
         graph_ref = self._build_ref_graph(dataset)
         self.output_path = output_path
+
+        traj_dir, classifier_dir = self.trajectory_infer_model._get_traj_infer_path(
+            output_path
+        )
+        self.traj_dir = traj_dir
+        self.classifier_dir = classifier_dir
+
+        self.dataset_name = dataset.get_name()
         return {
             # build the reference graph
             "graph_ref": graph_ref,
@@ -180,12 +182,11 @@ class GraphSimMetric(OntologyBasedMetrics):
         Wrapper function to call the graph similarity evaluation, and handle database
         logging.
         """
-        self.db_manager.insert_eval(
-            model,
-            self.__class__.__name__,
-            self._get_param_encoding(),
-            self._graph_sim_eval(graph_pred, graph_ref),
-        )
+        eval = self._graph_sim_eval(graph_pred, graph_ref)
+        if eval is not None:
+            self.db_manager.insert_eval(
+                model, self.__class__.__name__, self._get_param_encoding(), eval
+            )
 
     def _graph_sim_eval(self, graph_pred, graph_ref):
         raise NotImplementedError("Subclasses should implement this method.")
