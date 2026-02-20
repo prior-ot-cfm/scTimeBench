@@ -2,7 +2,11 @@
 Embedding-based metrics.
 """
 from crispy_fishstick.metrics.base import BaseMetric
-from crispy_fishstick.shared.dataset.registry import SuoDataset, GarciaAlonsoDataset
+from crispy_fishstick.shared.dataset.registry import (
+    SuoDataset,
+    GarciaAlonsoDataset,
+    MaDataset,
+)
 
 import os
 
@@ -15,6 +19,7 @@ class EmbeddingMetrics(BaseMetric):
         self.supported_datasets = [
             SuoDataset.__name__,
             GarciaAlonsoDataset.__name__,
+            MaDataset.__name__,
         ]
 
         self.default_dataset_group = "embeddings"
@@ -32,9 +37,10 @@ class EmbeddingMetrics(BaseMetric):
         return {
             "output_path": output_path,
             "model": model,
+            "dataset": dataset,
         }
 
-    def _submetric_eval(self, output_path, model):
+    def _submetric_eval(self, output_path, model, dataset):
         """
         Wrapper function to call the graph similarity evaluation, and handle database
         logging.
@@ -43,8 +49,8 @@ class EmbeddingMetrics(BaseMetric):
             model,
             self.__class__.__name__,
             self._get_param_encoding(),
-            self._embedding_eval(output_path),
+            self._embedding_eval(output_path, dataset),
         )
 
-    def _embedding_eval(self, output_path):
+    def _embedding_eval(self, output_path, dataset):
         raise NotImplementedError("Subclasses should implement this method.")

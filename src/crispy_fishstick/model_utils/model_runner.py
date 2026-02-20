@@ -106,6 +106,9 @@ class BaseModel:
                 result = self.generate_next_cell_type(test_ann_data)
                 # result should be a pandas DataFrame or Series
                 result.to_parquet(output_file)
+            elif required_output == RequiredOutputFiles.PRED_GRAPH:
+                result = self.generate_pred_graph(test_ann_data)
+                np.save(output_file, result)
             else:
                 raise ValueError(f"Unknown required output: {required_output}")
 
@@ -139,6 +142,13 @@ class BaseModel:
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
+    def generate_pred_graph(self, test_ann_data) -> np.ndarray:
+        """
+        Generate predicted graph.
+        Returns: np.ndarray representing the predicted graph
+        """
+        raise NotImplementedError("Subclasses should implement this method.")
+
 
 def main(model_class: BaseModel):
     print(f"Starting train and testing for model...")
@@ -147,6 +157,21 @@ def main(model_class: BaseModel):
     yaml_config = process_yaml(args.yaml_config)
 
     output_path = yaml_config["output_path"]
+
+    # Initialize the model
+    model: BaseModel = model_class(yaml_config)
+
+    # first let's check if the required outputs already exist -- and skip the whole process if so
+    if all(
+        [
+            os.path.exists(os.path.join(output_path, required_output.value))
+            for required_output in model.required_outputs
+        ]
+    ):
+        print(
+            "All required output files already exist, skipping training and generation."
+        )
+        return
 
     # Otherwise we have to load the data and train/test the model
     print("Loading dataset...")
@@ -160,9 +185,6 @@ def main(model_class: BaseModel):
         + test_ann_data.obs[time_col].unique().tolist()
     )
     all_tps = list(set(all_tps))
-
-    # Initialize the model
-    model: BaseModel = model_class(yaml_config)
 
     print(f"Training and/or loading the model: {model_class.__name__}")
     # let's let the train() function handle the caching as well
