@@ -8,13 +8,16 @@ from typing import final
 from crispy_fishstick.config import Config, RunType
 from crispy_fishstick.metrics.model_manager import ModelManager
 from crispy_fishstick.shared.dataset.base import (
+    BaseDataset,
     DATASET_REGISTRY,
     DATASET_FILTER_REGISTRY,
 )
 from crispy_fishstick.shared.constants import (
     RequiredOutputFiles,
     PICKLED_DATASET_FILENAME,
+    MODEL_CONFIG_FILENAME,
 )
+from crispy_fishstick.shared.utils import load_test_dataset
 from crispy_fishstick.database import DatabaseManager
 
 import os
@@ -54,8 +57,8 @@ class BaseMetric:
         self.db_manager = db_manager
         self.config = config
         self.metric_config = metric_config
-        self.MODEL_CONFIG_FILENAME = "model_config.yaml"
         self.params = {}
+        self.optional_datasets_path = None
 
         # skip the preprocessing steps if it has submetrics, as they will handle it themselves
         if len(self.submetrics) > 0:
@@ -141,6 +144,25 @@ class BaseMetric:
         Subclasses should implement the method `_submetric_eval` to evaluate the metric
         based on the model outputs and the dataset.
         """
+        # skip the metric if it's in the skip registry, unless it's force rerun
+        if (
+            self.__class__.__name__ in SKIP_METRIC_REGISTRY
+            and not self.config.force_rerun
+        ):
+            logging.info(
+                f"Skipping metric {self.__class__.__name__} as it is marked to be skipped."
+            )
+            return
+
+        # but if it's in the metric skip list, always skip
+        if self.__class__.__name__ in self.config.metrics_skiplist:
+            logging.info(
+                f"Skipping metric {self.__class__.__name__} as it is in the metric skip list."
+            )
+            return
+
+        logging.info(f"Evaluating metric {self.__class__.__name__}")
+
         # assert that the preprocessing was done correctly
         # we assume that each model corresponds to a dataset
         assert len(self.models) == len(
@@ -149,10 +171,13 @@ class BaseMetric:
 
         for model, dataset in zip(self.models, self.datasets):
             # first we skip if we already have the evaluation in the database
-            if self.db_manager.has_eval(
-                model,
-                self.__class__.__name__,
-                self._get_param_encoding(),
+            if (
+                self.db_manager.has_eval(
+                    model,
+                    self.__class__.__name__,
+                    self._get_param_encoding(),
+                )
+                and not self.config.force_rerun
             ):
                 logging.info(
                     f"Evaluation for metric {self.__class__.__name__} with params {self.params} already exists for model {model}. Skipping evaluation."
@@ -170,14 +195,16 @@ class BaseMetric:
                 self.config.run_type == RunType.AUTO_TRAIN_TEST
                 or self.config.run_type == RunType.TRAIN_ONLY
             ):
-                # only run this if one of the model outputs doesn't already exist
-                # here we will go through the required outputs and check if they exist
+                # ** Note: we always rerun if some list is not complete this because of issue: https://github.com/ehuan2/crispy-fishstick/issues/53 **
+                # ** This will not necessarily re-run the model, and the only time that is not saved is the activation of the venv **
+                # ** But this should be okay because that time is negligible, and this ensures that **
+                # ** The model outputs give what are expected. The model outputs should still be cached however. **
                 if all(
                     isinstance(outputs_list, list)
                     for outputs_list in self.required_outputs
                 ):
-                    # list of list case
-                    required_outputs_exist = any(
+                    # list of list case -- require all of them to exist
+                    required_outputs_exist = all(
                         all(
                             os.path.exists(os.path.join(output_path, output.value))
                             for output in output_set
@@ -192,8 +219,24 @@ class BaseMetric:
                     )
 
                 if not required_outputs_exist:
+                    # before running to train and test, we check if the dataset
+                    # requires caching, and if so, then we run to cache ahead of time
+                    # We do this because some filters (e.g., psupertime)
+                    # require the dataset to be preprocessed with a certain module
+                    # which may not exist in other models.
+                    if dataset.requires_caching():
+                        logging.info(
+                            f"Dataset {dataset} requires caching. Caching now before training and testing the model."
+                        )
+                        # we still load the test dataset for a couple of reasons:
+                        # 1. we want to store this into cache so the model can load it
+                        # 2. we still want the requires_caching however to avoid the extra load
+                        # before training, unless required. This also helps us avoid
+                        # creating an extra cache that is not necessary.
+                        _ = load_test_dataset(output_path)
+
                     model.train_and_test(
-                        os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+                        os.path.join(output_path, MODEL_CONFIG_FILENAME)
                     )
                 else:
                     logging.info(
@@ -231,7 +274,7 @@ class BaseMetric:
                     **self._prep_kwargs_for_submetric_eval(output_path, dataset, model)
                 )
 
-    def _prep_kwargs_for_submetric_eval(self, output_path, dataset, model):
+    def _prep_kwargs_for_submetric_eval(self, output_path, dataset: BaseDataset, model):
         """
         Prepares the keyword arguments required for submetric evaluation.
 
@@ -272,10 +315,6 @@ class BaseMetric:
         # to make our lives easier, we will also pickle our current dataset object
         # and store this in the output directory as well
         # so that the model can load this dataset object directly for training and testing
-        pickled_dataset_path = os.path.join(output_path, PICKLED_DATASET_FILENAME)
-        with open(pickled_dataset_path, "wb") as f:
-            pickle.dump(dataset, f)
-
         assert hasattr(
             self, "required_outputs"
         ), "Subclasses must define required_outputs attribute."
@@ -306,7 +345,9 @@ class BaseMetric:
 
         yaml_config = {
             "output_path": output_path,
-            "dataset_pkl_path": pickled_dataset_path,
+            "dataset_pkl_path": os.path.join(
+                dataset.get_dataset_dir(), PICKLED_DATASET_FILENAME
+            ),
             "model": self.config.model_yaml_data,
             "required_outputs": required_outputs_serialized,
             "datasets": dataset.encode_dataset_dict(),
@@ -314,7 +355,7 @@ class BaseMetric:
         }
 
         # write out the yaml config file for the model
-        yaml_config_path = os.path.join(output_path, self.MODEL_CONFIG_FILENAME)
+        yaml_config_path = os.path.join(output_path, MODEL_CONFIG_FILENAME)
         with open(yaml_config_path, "w") as f:
             yaml.safe_dump(yaml_config, f)
 
@@ -338,8 +379,10 @@ class BaseMetric:
         """
         if self.submetrics:
             for submetric in self.submetrics:
-                # pass in the trajectory inference model as part of the config
-                if submetric.__name__ in SKIP_METRIC_REGISTRY:
+                if (
+                    submetric.__name__ in SKIP_METRIC_REGISTRY
+                    and not self.config.force_rerun
+                ):
                     logging.info(
                         f"Skipping metric {submetric.__name__} as it is marked to be skipped."
                     )
@@ -390,6 +433,11 @@ class BaseMetric:
             group_config = metric_groups.get(self.default_dataset_group, {})
             default_dataset_tags = group_config.get("dataset_tags", None)
 
+        optional_datasets = []
+        if self.optional_datasets_path is not None:
+            with open(self.optional_datasets_path, "r") as f:
+                optional_datasets = yaml.safe_load(f)["datasets"]
+
         # now we check if datasets are specified in the config
         if not hasattr(self.config, "datasets") or len(self.config.datasets) == 0:
             # datasets are not specified, we use defaults for the metric group when present,
@@ -405,12 +453,14 @@ class BaseMetric:
         resolved_datasets = []
         for dataset in requested_datasets:
             if "tag" in dataset:
+                # we need to find the matching dataset from the default datasets or optional datasets
+                to_match = default_datasets + optional_datasets
                 matching_datasets = [
-                    d for d in default_datasets if d.get("tag", None) == dataset["tag"]
+                    d for d in to_match if d.get("tag", None) == dataset["tag"]
                 ]
                 assert (
                     len(matching_datasets) == 1
-                ), f"Dataset with tag {dataset['tag']} not found or multiple found in default datasets."
+                ), f"Dataset with tag {dataset['tag']} not found or multiple found in default or optional datasets."
                 dataset_def = matching_datasets[0]
             else:
                 dataset_def = dataset
@@ -430,17 +480,14 @@ class BaseMetric:
                 }
             )
 
-        # ensure that the model caches are consistent and independent of tag aliases
-        self.config.datasets = resolved_datasets
-
         logging.debug("-" * 50 + "Datasets" + "-" * 50)
-        logging.debug(self.config.datasets)
+        logging.debug(resolved_datasets)
         logging.debug("-" * 100)
 
         # 1) check that all the specified datasets are supported by this metric
         # if not, we simply take the ones that are supported
         dataset_for_metric = []
-        for dataset in self.config.datasets:
+        for dataset in resolved_datasets:
             dataset_name = dataset.get("name")
             if dataset_name is None:
                 raise ValueError(
@@ -489,16 +536,53 @@ class BaseMetric:
         ), "Mismatch in number of datasets and dataset filter builders."
 
         # 3) finally, with the dataset filters built, we create all the filters that we need
-        self.datasets = []
+        self.datasets: list[BaseDataset] = []
         for dataset, builders in zip(
             dataset_for_metric, self.dataset_filters_builders_list
         ):
             # now we create a dataset instance with the appropriate filters
             self.datasets.append(
                 DATASET_REGISTRY[dataset["name"]](
-                    dataset, [builder(dataset) for builder in builders]
+                    dataset,
+                    [builder(dataset) for builder in builders],
+                    self.config.output_dir,
                 )
             )
+
+        # 4) Then we insert these datasets into the database if they don't already exist,
+        # and we also create their dataset directories
+        for dataset in self.datasets:
+            self.db_manager.insert_dataset(dataset)
+            logging.debug(
+                f"Processing dataset: {dataset} to {dataset.get_dataset_dir()}"
+            )
+            dataset.create_dataset_dir()
+            # TODO: in this dataset directory, we can then store the base metrics we have
+            # such as the base visualization, etc.
+            # for now, let's just store the dataset object itself, and the model can load this for its own use
+            pickled_dataset_path = os.path.join(
+                dataset.get_dataset_dir(), PICKLED_DATASET_FILENAME
+            )
+            with open(pickled_dataset_path, "wb") as f:
+                pickle.dump(dataset, f)
+
+            # write out the dataset information to the directory as well
+            with open(
+                os.path.join(dataset.get_dataset_dir(), "dataset_info.yaml"), "w"
+            ) as f:
+                yaml.safe_dump(
+                    {
+                        "dataset_dict": dataset.dataset_dict,
+                        "dataset_filters": [
+                            {
+                                "name": type(f).__name__,
+                                "parameters": f._parameters(),
+                            }
+                            for f in dataset.dataset_filters
+                        ],
+                    },
+                    f,
+                )
 
         # verify that the datasets are properly initialized
         # TODO: add a unit test for this!

@@ -13,6 +13,7 @@ import sqlite3
 from crispy_fishstick.config import Config
 
 from crispy_fishstick.metrics.model_manager import ModelManager
+from crispy_fishstick.shared.dataset.base import BaseDataset
 import json
 
 
@@ -20,7 +21,13 @@ class DatabaseManager:
     def __init__(self, config: Config):
         self.conn = sqlite3.connect(config.database_path)
         self._create_tables()
-        self.table_names = ["model_outputs", "metrics", "evals"]
+        self.table_names = [
+            "model_outputs",
+            "datasets",
+            "metrics",
+            "evals",
+            "dataset_metrics",
+        ]
 
     def _create_tables(self):
         cursor = self.conn.cursor()
@@ -29,15 +36,27 @@ class DatabaseManager:
             CREATE TABLE IF NOT EXISTS model_outputs (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
-                dataset_name TEXT,
-                dataset_dict TEXT,
-                dataset_filters TEXT,
+                dataset_id INTEGER,
                 metadata TEXT,
                 path TEXT,
-                UNIQUE(name, dataset_name, dataset_dict, dataset_filters, metadata, path)
+                UNIQUE(name, dataset_id, metadata, path)
             )
         """
         )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS datasets (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                dataset_dict TEXT,
+                dataset_filters TEXT,
+                path TEXT,
+                UNIQUE(name, dataset_dict, dataset_filters)
+            )
+        """
+        )
+
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS metrics (
@@ -59,20 +78,63 @@ class DatabaseManager:
             )
         """
         )
+
+        # finally, let's have a table for the dataset metrics, such as different classifiers on dataset 1
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS dataset_metrics (
+                id INTEGER PRIMARY KEY,
+                dataset_id INTEGER,
+                metric_id INTEGER,
+                result TEXT
+            )
+        """
+        )
+        self.conn.commit()
+
+    def get_dataset_id(self, model: ModelManager):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT id FROM datasets
+            WHERE name = ? AND dataset_dict = ? AND dataset_filters = ?
+        """,
+            (
+                model.dataset.get_name(),
+                model.dataset.encode_dataset_dict(),
+                model.dataset.encode_filters(),
+            ),
+        )
+        result = cursor.fetchone()
+        return result[0] if result else None
+
+    def insert_dataset(self, dataset: BaseDataset):
+        # first insert into datasets table if not already there, and get its id
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO datasets (name, dataset_dict, dataset_filters, path)
+            VALUES (?, ?, ?, ?)
+        """,
+            (
+                dataset.get_name(),
+                dataset.encode_dataset_dict(),
+                dataset.encode_filters(),
+                dataset.get_dataset_dir(),
+            ),
+        )
         self.conn.commit()
 
     def insert_model_output(self, model: ModelManager, output_path: str):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            INSERT INTO model_outputs (name, dataset_name, dataset_dict, dataset_filters, metadata, path)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO model_outputs (name, dataset_id, metadata, path)
+            VALUES (?, ?, ?, ?)
         """,
             (
                 model._get_name(),
-                model.dataset.get_name(),
-                model.dataset.encode_dataset_dict(),
-                model.dataset.encode_filters(),
+                self.get_dataset_id(model),
                 model._encode_metadata(),
                 output_path,
             ),
@@ -85,13 +147,11 @@ class DatabaseManager:
         cursor.execute(
             """
             SELECT path FROM model_outputs
-            WHERE name = ? AND dataset_name = ? AND dataset_dict = ? AND dataset_filters = ? AND metadata = ?
+            WHERE name = ? AND dataset_id = ? AND metadata = ?
         """,
             (
                 model._get_name(),
-                model.dataset.get_name(),
-                model.dataset.encode_dataset_dict(),
-                model.dataset.encode_filters(),
+                self.get_dataset_id(model),
                 model._encode_metadata(),
             ),
         )
@@ -110,10 +170,11 @@ class DatabaseManager:
                 # add the model name, dataset name, and metric name for easier reading
                 cursor.execute(
                     """
-                    SELECT evals.id, evals.model_output_id, model_outputs.name, model_outputs.dataset_name, evals.metric_id, metrics.name, evals.result
+                    SELECT evals.id, evals.model_output_id, model_outputs.name, datasets.name, evals.metric_id, metrics.name, evals.result
                     FROM evals
                     JOIN model_outputs ON evals.model_output_id = model_outputs.id
                     JOIN metrics ON evals.metric_id = metrics.id
+                    JOIN datasets ON model_outputs.dataset_id = datasets.id
                 """
                 )
             else:
@@ -170,13 +231,11 @@ class DatabaseManager:
         cursor.execute(
             """
             SELECT id FROM model_outputs
-            WHERE name = ? AND dataset_name = ? AND dataset_dict = ? AND dataset_filters = ? AND metadata = ?
+            WHERE name = ? AND dataset_id = ? AND metadata = ?
         """,
             (
                 model._get_name(),
-                model.dataset.get_name(),
-                model.dataset.encode_dataset_dict(),
-                model.dataset.encode_filters(),
+                self.get_dataset_id(model),
                 model._encode_metadata(),
             ),
         )
@@ -210,7 +269,7 @@ class DatabaseManager:
         return eval_row is not None
 
     def insert_eval(
-        self, model: ModelManager, metric_name: str, metric_params: str, result: float
+        self, model: ModelManager, metric_name: str, metric_params: str, result
     ):
         cursor = self.conn.cursor()
 
@@ -218,13 +277,11 @@ class DatabaseManager:
         cursor.execute(
             """
             SELECT id FROM model_outputs
-            WHERE name = ? AND dataset_name = ? AND dataset_dict = ? AND dataset_filters = ? AND metadata = ?
+            WHERE name = ? AND dataset_id = ? AND metadata = ?
         """,
             (
                 model._get_name(),
-                model.dataset.get_name(),
-                model.dataset.encode_dataset_dict(),
-                model.dataset.encode_filters(),
+                self.get_dataset_id(model),
                 model._encode_metadata(),
             ),
         )
@@ -288,8 +345,9 @@ class DatabaseManager:
             model_id = row[0]
             cursor.execute(
                 """
-                SELECT name, dataset_name, dataset_dict, dataset_filters, metadata FROM model_outputs
-                WHERE id = ?
+                SELECT name, datasets.name, datasets.dataset_dict, datasets.dataset_filters, metadata FROM model_outputs
+                JOIN datasets ON model_outputs.dataset_id = datasets.id
+                WHERE model_outputs.id = ?
             """,
                 (model_id,),
             )
@@ -314,13 +372,11 @@ class DatabaseManager:
         cursor.execute(
             """
             SELECT id FROM model_outputs
-            WHERE name = ? AND dataset_name = ? AND dataset_dict = ? AND dataset_filters = ? AND metadata = ?
+            WHERE name = ? AND dataset_id = ? AND metadata = ?
         """,
             (
                 model._get_name(),
-                model.dataset.get_name(),
-                model.dataset.encode_dataset_dict(),
-                model.dataset.encode_filters(),
+                self.get_dataset_id(model),
                 model._encode_metadata(),
             ),
         )
@@ -362,6 +418,52 @@ class DatabaseManager:
             )
 
         return outputs
+
+    # ** DATASET METRICS **
+    def insert_dataset_metric(
+        self, dataset: BaseDataset, metric_name, metric_params, result
+    ):
+        cursor = self.conn.cursor()
+
+        # first we get the metric id
+        cursor.execute(
+            """
+            SELECT id FROM metrics
+            WHERE name = ? AND parameters = ?
+        """,
+            (metric_name, metric_params),
+        )
+        metric_row = cursor.fetchone()
+        if metric_row is None:
+            raise ValueError("Metric not found in database.")
+        metric_id = metric_row[0]
+
+        # then we get the dataset id
+        cursor.execute(
+            """
+            SELECT id FROM datasets
+            WHERE name = ? AND dataset_dict = ? AND dataset_filters = ?
+        """,
+            (
+                dataset.get_name(),
+                dataset.encode_dataset_dict(),
+                dataset.encode_filters(),
+            ),
+        )
+        dataset_row = cursor.fetchone()
+        if dataset_row is None:
+            raise ValueError("Dataset not found in database.")
+        dataset_id = dataset_row[0]
+
+        # finally we insert the dataset metric
+        cursor.execute(
+            """
+            INSERT INTO dataset_metrics (dataset_id, metric_id, result)
+            VALUES (?, ?, ?)
+        """,
+            (dataset_id, metric_id, result),
+        )
+        self.conn.commit()
 
     # ** CLEAR TABLES **
     def clear_tables(self):

@@ -18,9 +18,10 @@ class TimeSplitDatasetFilter(BaseDatasetFilter):
         """
         return {
             "test_tps": self.test_tps,
+            "use_time_indices": self.dataset_dict.get("use_time_indices", False),
         }
 
-    def filter(self, ann_data):
+    def filter(self, ann_data, **kwargs):
         """
         Split the dataset based on the given test timepoints. Must add starting timepoint for proper behaviour.
         """
@@ -32,6 +33,10 @@ class TimeSplitDatasetFilter(BaseDatasetFilter):
 
         # Avoid mutating the configured list to keep filter parameters stable.
         test_tps = list(self.test_tps)
+        if self._parameters().get("use_time_indices", False):
+            # if we're using time indices, we need to convert the test_tps from indices to actual timepoints
+            test_tps = [timepoints[tp] for tp in self.test_tps]
+
         train_tps = [tp for tp in timepoints if tp not in test_tps]
 
         # add start_tp to test_tps if not already included
