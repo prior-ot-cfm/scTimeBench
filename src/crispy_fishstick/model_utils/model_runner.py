@@ -10,6 +10,7 @@ import pickle
 import yaml
 import numpy as np
 import pandas as pd
+import scanpy as sc
 
 from crispy_fishstick.shared.constants import RequiredOutputFiles
 from crispy_fishstick.shared.constants import ObservationColumns
@@ -109,6 +110,37 @@ class BaseModel:
             elif required_output == RequiredOutputFiles.PRED_GRAPH:
                 result = self.generate_pred_graph(test_ann_data)
                 np.save(output_file, result)
+            elif required_output == RequiredOutputFiles.FROM_ZERO_TO_END_PRED_GEX:
+                # first let's preprocess test_ann_data to only provide the first timepoint
+                # then we also require that the resultant ann data file has (tps - 1) * n_cells from tp0
+                # and that it populates the column ObservationColumns.TIMEPOINT with the correct time
+                first_tp = test_ann_data.obs[ObservationColumns.TIMEPOINT.value].min()
+                first_tp_cells = test_ann_data[
+                    test_ann_data.obs[ObservationColumns.TIMEPOINT.value] == first_tp
+                ].copy()
+
+                all_tps = sorted(
+                    test_ann_data.obs[ObservationColumns.TIMEPOINT.value].unique()
+                )
+
+                # # let's add to all-tps by double to just test things out :)
+                # for _ in range(len(all_tps)):
+                #     all_tps.append(all_tps[-1] + )
+
+                result = self.generate_zero_to_end_pred_gex(first_tp_cells, all_tps)
+                # result should be an AnnData object
+                # now check that the result has the correct shape and the correct timepoints in the obs column
+                expected_n_cells = len(first_tp_cells) * len(all_tps)
+                assert (
+                    result.shape[0] == expected_n_cells
+                ), f"Expected {expected_n_cells} cells in the result, but got {result.shape[0]}"
+                result_tps = sorted(
+                    result.obs[ObservationColumns.TIMEPOINT.value].unique()
+                )
+                assert (
+                    result_tps == all_tps
+                ), f"Expected timepoints {all_tps} in the result, but got {result_tps}"
+                result.write_h5ad(output_file)
             else:
                 raise ValueError(f"Unknown required output: {required_output}")
 
@@ -146,6 +178,13 @@ class BaseModel:
         """
         Generate predicted graph.
         Returns: np.ndarray representing the predicted graph
+        """
+        raise NotImplementedError("Subclasses should implement this method.")
+
+    def generate_zero_to_end_pred_gex(self, first_tp_cells, all_tps) -> sc.AnnData:
+        """
+        Generate predicted gene expression from the first to the last timepoint.
+        Returns: AnnData object with predicted gene expression across all timepoints
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
