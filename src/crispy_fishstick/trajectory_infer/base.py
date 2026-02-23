@@ -31,10 +31,6 @@ NEXT_TP_PROBS_FILE = "next_timepoint_probs.npy"
 NEXT_TP_INDICES_FILE = "next_timepoint_indices.npy"
 IDX_TO_CELLTYPE_FILE = "index_to_cell_type.json"
 INFERRED_TRAJ_PER_TP_FILE = "inferred_trajectory_per_tp.json"
-INFERRED_TRAJ_FROM_ZERO_TO_END_FILE = "inferred_trajectory_from_zero_to_end.json"
-INFERRED_TRAJ_FROM_ZERO_TO_END_FILE_PER_TP = (
-    "inferred_trajectory_from_zero_to_end_per_tp.json"
-)
 
 
 def register_trajectory_inference_method(cls):
@@ -88,6 +84,7 @@ class BaseTrajectoryInferMethod:
             "test_size": self.traj_config.get("test_size", 0.2),
             "random_state": self.traj_config.get("random_state", 42),
             "model_classifier": self.traj_config.get("model_classifier", False),
+            "from_tp_zero": self.traj_config.get("from_tp_zero", False),
             **self._subclass_parameters(),
         }
 
@@ -109,12 +106,8 @@ class BaseTrajectoryInferMethod:
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
-    def _from_tp_zero(self, output_path):
-        return os.path.exists(
-            os.path.join(
-                output_path, RequiredOutputFiles.FROM_ZERO_TO_END_PRED_GEX.value
-            )
-        )
+    def _from_tp_zero(self):
+        return self._parameters().get("from_tp_zero", False)
 
     def _get_next_tp_tensors(self, output_path, test_ann_data):
         """
@@ -123,7 +116,7 @@ class BaseTrajectoryInferMethod:
         We want to return:
         - Predicted gene expr/embedding at time t (for (1, last t))
         """
-        if self._from_tp_zero(output_path):
+        if self._from_tp_zero():
             # here we have different logic because we have the predicted timepoints
             # not the previous ones here
             next_tp_gex_anndata = load_output_file(
@@ -182,7 +175,7 @@ class BaseTrajectoryInferMethod:
 
         dataset, _ = get_dataset(output_path)
         classifier_save_path = os.path.join(
-            dataset.get_dataset_dir(), INFERRED_TRAJ_DIR, self.encode()
+            dataset.get_dataset_dir(), INFERRED_TRAJ_DIR, self.encode_for_classifier()
         )
         os.makedirs(classifier_save_path, exist_ok=True)
         return traj_infer_path, classifier_save_path
@@ -339,11 +332,7 @@ class BaseTrajectoryInferMethod:
         # and also store under trajectory_infer/<hash-of-traj-model>/traj_config.yaml
         # and trajectory_infer/<hash-of-traj-model>/inferred_trajectory.json
         traj_file = None
-        if self._from_tp_zero(output_path) and per_tp:
-            traj_file = INFERRED_TRAJ_FROM_ZERO_TO_END_FILE_PER_TP
-        elif self._from_tp_zero(output_path) and not per_tp:
-            traj_file = INFERRED_TRAJ_FROM_ZERO_TO_END_FILE
-        elif not self._from_tp_zero(output_path) and per_tp:
+        if per_tp:
             traj_file = INFERRED_TRAJ_PER_TP_FILE
         else:
             traj_file = INFERRED_TRAJ_FILE
@@ -467,7 +456,7 @@ class BaseTrajectoryInferMethod:
         ]
 
         # at this point, the next cell types are defined correctly, it's just the cell types and cell_tps
-        if not self._from_tp_zero(output_path):
+        if not self._from_tp_zero():
             _, cell_tps, cell_types = sequential_tps()
             return cell_types, next_cell_types, cell_tps
 
@@ -509,6 +498,24 @@ class BaseTrajectoryInferMethod:
         Hash the trajectory inference method based on its class name and parameters.
         """
         return hashlib.md5(str(self).encode()).hexdigest()
+
+    def encode_for_classifier(self):
+        """
+        Hash the trajectory inference method for the classifier based on its class name and parameters.
+
+        This is different from the regular encode because we want to ignore the from_tp_zero because
+        that should be shared regardless of the from_tp_zero setting.
+        """
+        params = self._parameters()
+        params.pop("from_tp_zero", None)
+        return hashlib.md5(
+            json.dumps(
+                {
+                    "method": self.__class__.__name__,
+                    "parameters": params,
+                }
+            ).encode()
+        ).hexdigest()
 
 
 class TrajectoryInferenceMethodFactory:

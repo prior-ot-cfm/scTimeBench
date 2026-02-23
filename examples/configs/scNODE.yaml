@@ -7,7 +7,7 @@ model:
   train_and_test_script: ./models/scNODE/train_and_test.sh
 
 metrics:
-  - name: GraphSimMetrics
-    from_zero_to_end_gex: true
-  - name: GraphSimMetrics
-    from_zero_to_end_gex: false
+  - name: StackedBarPlot
+    from_tp_zero: true
+  - name: StackedBarPlot
+    from_tp_zero: false

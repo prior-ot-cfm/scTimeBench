@@ -27,13 +27,21 @@ class GraphSimMetric(OntologyBasedMetrics):
     def _defaults(self):
         return {
             "edge_threshold": 0.1,
-            "from_zero_to_end_gex": False,
+            "from_tp_zero": False,
         }
 
     def _setup_trajectory_inference_model(self):
+        traj_infer_config = self.metric_config.get("trajectory_infer_model", {})
+
+        assert (
+            not hasattr(traj_infer_config, "from_tp_zero")
+            or traj_infer_config["from_tp_zero"] == self.params["from_tp_zero"]
+        ), "from_tp_zero in trajectory inference config must either not be defined, or match from_tp_zero in metric config."
+        traj_infer_config["from_tp_zero"] = self.params["from_tp_zero"]
+
         self.trajectory_infer_model = (
             TrajectoryInferenceMethodFactory().get_trajectory_infer_method(
-                self.metric_config.get("trajectory_infer_model", {})
+                traj_infer_config
             )
         )
         self.params["trajectory_infer_model"] = str(self.trajectory_infer_model)
@@ -47,14 +55,14 @@ class GraphSimMetric(OntologyBasedMetrics):
                 [
                     RequiredOutputFiles.NEXT_TIMEPOINT_GENE_EXPRESSION,
                 ]
-                if not self.params["from_zero_to_end_gex"]
+                if not self.params["from_tp_zero"]
                 else [
                     RequiredOutputFiles.FROM_ZERO_TO_END_PRED_GEX,
                 ]
             )
         else:
-            assert self.params["from_zero_to_end_gex"] == False, (
-                "from_zero_to_end_gex can only be True if the "
+            assert self.params["from_tp_zero"] == False, (
+                "from_tp_zero can only be True if the "
                 "trajectory inference model uses gene expression."
             )
             primary_outputs = [

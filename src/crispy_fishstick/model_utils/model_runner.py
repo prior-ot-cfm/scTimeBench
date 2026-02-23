@@ -123,10 +123,6 @@ class BaseModel:
                     test_ann_data.obs[ObservationColumns.TIMEPOINT.value].unique()
                 )
 
-                # # let's add to all-tps by double to just test things out :)
-                # for _ in range(len(all_tps)):
-                #     all_tps.append(all_tps[-1] + )
-
                 result = self.generate_zero_to_end_pred_gex(first_tp_cells, all_tps)
                 # result should be an AnnData object
                 # now check that the result has the correct shape and the correct timepoints in the obs column
