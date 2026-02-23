@@ -27,6 +27,7 @@ class GraphSimMetric(OntologyBasedMetrics):
     def _defaults(self):
         return {
             "edge_threshold": 0.1,
+            "from_zero_to_end_gex": False,
         }
 
     def _setup_trajectory_inference_model(self):
@@ -42,10 +43,20 @@ class GraphSimMetric(OntologyBasedMetrics):
         # where we define the output embedding name
         # as well as the required features and outputs
         if self.trajectory_infer_model.uses_gene_expr():
-            primary_outputs = [
-                RequiredOutputFiles.NEXT_TIMEPOINT_GENE_EXPRESSION,
-            ]
+            primary_outputs = (
+                [
+                    RequiredOutputFiles.NEXT_TIMEPOINT_GENE_EXPRESSION,
+                ]
+                if not self.params["from_zero_to_end_gex"]
+                else [
+                    RequiredOutputFiles.FROM_ZERO_TO_END_PRED_GEX,
+                ]
+            )
         else:
+            assert self.params["from_zero_to_end_gex"] == False, (
+                "from_zero_to_end_gex can only be True if the "
+                "trajectory inference model uses gene expression."
+            )
             primary_outputs = [
                 RequiredOutputFiles.EMBEDDING,
                 RequiredOutputFiles.NEXT_TIMEPOINT_EMBEDDING,
