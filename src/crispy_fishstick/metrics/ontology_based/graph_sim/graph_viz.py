@@ -65,7 +65,13 @@ class GraphVisualization(GraphSimMetric):
             os.path.join(self.traj_dir, "predicted_unweighted_graph"),
         )
 
-        return  # Visualization metric does not return a numeric score
+        return str(
+            (
+                os.path.join(self.traj_dir, "reference_graph.png"),
+                os.path.join(self.traj_dir, "predicted_graph.png"),
+                os.path.join(self.traj_dir, "predicted_unweighted_graph.png"),
+            )
+        )  # return the path of the images to store in db
 
 
 class StackedBarPlot(GraphSimMetric):
@@ -218,12 +224,15 @@ class StackedBarPlot(GraphSimMetric):
                         target_cell_types[target_cell_type] = 0
                     target_cell_types[target_cell_type] += count
 
-            assert tp < last_tp, "Last timepoint should not have target cell types."
+            if not self.params["from_tp_zero"]:
+                assert tp < last_tp, "Last timepoint should not have target cell types."
 
             for cell_type, count in target_cell_types.items():
                 target_records.append(
                     {
-                        TIMEPOINT_COL: unique_tps[unique_tps.index(tp) + 1],
+                        TIMEPOINT_COL: unique_tps[unique_tps.index(tp) + 1]
+                        if not self.params["from_tp_zero"]
+                        else tp,
                         CELLTYPE_COL: cell_type,
                         COUNT_COL: count,
                     }
@@ -258,12 +267,17 @@ class StackedBarPlot(GraphSimMetric):
             plot_stacked_bar(
                 source_df,
                 ref_plot_output,
-                f"True Cell Type Proportions Over {self.time_label} for {self.dataset_name}",
+                f"True Cell Type Proportions Over {self.time_label} for {self.dataset_name}{'' if not self.params['from_tp_zero'] else ' (From Zero to End GEX)'}",
             )
         plot_stacked_bar(
             target_df,
             os.path.join(self.traj_dir, "target_stacked_bar_plot.png"),
-            f'Predicted Target Cell Type Proportions Over {self.time_label} for {self.config.model["name"]} on {self.dataset_name}',
+            f'Predicted Target Cell Type Proportions Over {self.time_label} for {self.config.model["name"]} on {self.dataset_name}{"" if not self.params["from_tp_zero"] else " (From Zero to End GEX)"}',
         )
 
-        return  # Visualization metric does not return a numeric score
+        return str(
+            (
+                ref_plot_output,
+                os.path.join(self.traj_dir, "target_stacked_bar_plot.png"),
+            )
+        )  # return the path of the images to store in db
