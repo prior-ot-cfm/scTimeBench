@@ -362,6 +362,16 @@ class BaseMetric:
         # now let's save this hash output dir to the database as well, only if it doesn't exist
         if self.db_manager.get_model_output_path(model) is None:
             self.db_manager.insert_model_output(model, output_path)
+        else:
+            # make sure that they are in fact the same, or else raise an error
+            # to alert the user that there will be some inconsistency -- they either
+            # need to create a new database/clear the existing one or fix their path
+            existing_output_path = self.db_manager.get_model_output_path(model)
+            assert existing_output_path == output_path, (
+                f"Output path for model {model} already exists in database with a different path. "
+                f"Existing path: {existing_output_path}, New path: {output_path}. "
+                f"Please resolve this inconsistency by either clearing the database or fixing the output directory."
+            )
 
         return output_path
 

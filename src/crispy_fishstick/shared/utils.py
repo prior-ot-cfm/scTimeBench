@@ -5,6 +5,7 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
+import scanpy as sc
 import logging
 import yaml
 
@@ -15,6 +16,9 @@ from crispy_fishstick.shared.constants import (
 
 DATASET_CACHE_LIMIT = 3  # max number of datasets to cache in memory
 DATASET_IN_MEM_CACHE = {}
+
+OUTPUT_FILE_CACHE_LIMIT = 3  # max number of output files to cache in memory
+OUTPUT_FILE_CACHE = {}
 
 
 def clear_dataset_cache():
@@ -93,9 +97,23 @@ def load_output_file(output_path, required_output: RequiredOutputFiles):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Output file not found: {file_path}")
 
+    if file_path in OUTPUT_FILE_CACHE:
+        logging.debug(f"Loaded {required_output.value} from in-memory cache.")
+        return OUTPUT_FILE_CACHE[file_path]
+
     if required_output.value.endswith(".npy"):
-        return np.load(file_path)
+        output_file = np.load(file_path)
     elif required_output.value.endswith(".parquet"):
-        return pd.read_parquet(file_path)
+        output_file = pd.read_parquet(file_path)
+    elif required_output.value.endswith(".h5ad"):
+        output_file = sc.read_h5ad(file_path)
     else:
         raise ValueError(f"Unknown file type: {required_output.value}")
+
+    # Cache the output file if we haven't exceeded the limit
+    if len(OUTPUT_FILE_CACHE) >= OUTPUT_FILE_CACHE_LIMIT:
+        # Remove an arbitrary item (not the most efficient, but simple)
+        OUTPUT_FILE_CACHE.pop(next(iter(OUTPUT_FILE_CACHE)))
+
+    OUTPUT_FILE_CACHE[file_path] = output_file
+    return output_file

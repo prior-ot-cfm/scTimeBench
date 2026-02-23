@@ -18,6 +18,7 @@ class RequiredOutputFiles(Enum):
     # cells to cells, and thus build their lineage this way
     NEXT_CELLTYPE = "next_cell_type.parquet"
     PRED_GRAPH = "predicted_graph.npy"
+    FROM_ZERO_TO_END_PRED_GEX = "from_zero_to_end_predicted_gene_expression.h5ad"
 
 
 DATASET_DIR = "datasets"
