@@ -15,6 +15,8 @@ from crispy_fishstick.model_utils.model_runner import main, BaseModel
 from crispy_fishstick.shared.constants import ObservationColumns
 import numpy as np
 import torch
+import scanpy as sc
+import random
 from optim.running import constructscNODEModel, scNODETrainWithPreTrain
 
 
@@ -77,10 +79,16 @@ def model_training(
     pretrain_iters = metadata.get("pretrain_iters", 200)
     pretrain_lr = 1e-3
     epochs = metadata.get("epochs", 10)
+    seed = metadata.get("seed", 42)
     iters = 100
     batch_size = 32
     lr = 1e-3
     latent_ode_model = model_setup(train_data[0].shape[1])
+
+    # now let's set the seed for reproducibility -- not quite sure which one, but let's do all
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     return scNODETrainWithPreTrain(
         train_data,
@@ -201,6 +209,38 @@ class scNODE(BaseModel):
             next_timepoint_gene_expr.append(recon_obs[1].detach().numpy())
 
         return np.vstack(next_timepoint_gene_expr)
+
+    def generate_zero_to_end_pred_gex(self, first_tp_cells, all_tps) -> sc.AnnData:
+        """
+        Generate predicted gene expression from the first to the last timepoint.
+        Returns: AnnData object with predicted gene expression across all timepoints
+        """
+        self.latent_ode_model.eval()
+
+        # first off let's get the cells at tp0
+        # and then project it forward using latent_ode_model.predict
+        data = first_tp_cells.X.toarray()
+        _, _, recon_obs = self.latent_ode_model.predict(
+            torch.FloatTensor(data),
+            torch.FloatTensor(all_tps),
+            n_cells=data.shape[0],
+        )
+
+        recon_obs = recon_obs.detach().numpy()
+
+        # recon_obs is cells by tps by genes
+        # which we can recover cells by genes with:
+        # the timepoint information should be simply [:, i, :]
+        pred_ann_data = first_tp_cells.copy()
+        for i, tp in enumerate(all_tps[1:], 1):
+            # create a new AnnData object for each timepoint
+            tp_ann_data = first_tp_cells.copy()
+            tp_ann_data.X = recon_obs[:, i, :]
+            tp_ann_data.obs[ObservationColumns.TIMEPOINT.value] = tp
+            pred_ann_data = sc.concat([pred_ann_data, tp_ann_data], axis=0)
+            print(f"Shape of {i}th timepoint: {tp_ann_data.shape}")
+
+        return pred_ann_data
 
 
 if __name__ == "__main__":

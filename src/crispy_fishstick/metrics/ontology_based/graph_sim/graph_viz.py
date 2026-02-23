@@ -65,7 +65,13 @@ class GraphVisualization(GraphSimMetric):
             os.path.join(self.traj_dir, "predicted_unweighted_graph"),
         )
 
-        return  # Visualization metric does not return a numeric score
+        return str(
+            (
+                ref_graph_output + ".png",
+                os.path.join(self.traj_dir, "predicted_graph.png"),
+                os.path.join(self.traj_dir, "predicted_unweighted_graph.png"),
+            )
+        )  # return the path of the images to store in db
 
 
 class StackedBarPlot(GraphSimMetric):
@@ -195,55 +201,47 @@ class StackedBarPlot(GraphSimMetric):
 
         logging.debug(f"Per-timepoint predicted trajectory: {per_tp_traj}")
 
-        # we can get the source cell type counts by aggregating over the target cell types
+        # the source records should be from test_ann_data not from the predicted trajectory
         source_records = []
+        for tp in unique_tps:
+            tp_data = test_ann_data.obs[
+                test_ann_data.obs[ObservationColumns.TIMEPOINT.value] == tp
+            ]
+            tp_counts = tp_data[ObservationColumns.CELL_TYPE.value].value_counts()
+            for cell_type, count in tp_counts.items():
+                source_records.append(
+                    {
+                        TIMEPOINT_COL: tp,
+                        CELLTYPE_COL: cell_type,
+                        COUNT_COL: count,
+                    }
+                )
+
         target_records = []
 
         for tp, traj in per_tp_traj.items():
             tp = float(tp)
             target_cell_types = {}
 
-            for source_cell_type, target_distribution in traj.items():
-                total_count = sum(target_distribution.values())
-                source_records.append(
-                    {
-                        TIMEPOINT_COL: tp,
-                        CELLTYPE_COL: source_cell_type,
-                        COUNT_COL: total_count,
-                    }
-                )
-
+            for _, target_distribution in traj.items():
                 for target_cell_type, count in target_distribution.items():
                     if target_cell_type not in target_cell_types:
                         target_cell_types[target_cell_type] = 0
                     target_cell_types[target_cell_type] += count
 
-            assert tp < last_tp, "Last timepoint should not have target cell types."
+            if not self.params["from_tp_zero"]:
+                assert tp < last_tp, "Last timepoint should not have target cell types."
 
             for cell_type, count in target_cell_types.items():
                 target_records.append(
                     {
-                        TIMEPOINT_COL: unique_tps[unique_tps.index(tp) + 1],
+                        TIMEPOINT_COL: unique_tps[unique_tps.index(tp) + 1]
+                        if not self.params["from_tp_zero"]
+                        else tp,
                         CELLTYPE_COL: cell_type,
                         COUNT_COL: count,
                     }
                 )
-
-        # then finally we add the real last timepoint from the test data
-        last_tp_data = test_ann_data.obs[
-            test_ann_data.obs[ObservationColumns.TIMEPOINT.value] == last_tp
-        ]
-        last_tp_cell_type_counts = last_tp_data[
-            ObservationColumns.CELL_TYPE.value
-        ].value_counts()
-        for cell_type, count in last_tp_cell_type_counts.items():
-            source_records.append(
-                {
-                    TIMEPOINT_COL: last_tp,
-                    CELLTYPE_COL: cell_type,
-                    COUNT_COL: count,
-                }
-            )
 
         # then let's create DataFrames
         source_df = pd.DataFrame(source_records)
@@ -258,12 +256,17 @@ class StackedBarPlot(GraphSimMetric):
             plot_stacked_bar(
                 source_df,
                 ref_plot_output,
-                f"True Cell Type Proportions Over {self.time_label} for {self.dataset_name}",
+                f"True Cell Type Proportions Over {self.time_label} for {self.dataset_name}{'' if not self.params['from_tp_zero'] else ' (From Zero to End GEX)'}",
             )
         plot_stacked_bar(
             target_df,
             os.path.join(self.traj_dir, "target_stacked_bar_plot.png"),
-            f'Predicted Target Cell Type Proportions Over {self.time_label} for {self.config.model["name"]} on {self.dataset_name}',
+            f'Predicted Target Cell Type Proportions Over {self.time_label} for {self.config.model["name"]} on {self.dataset_name}{"" if not self.params["from_tp_zero"] else " (From Zero to End GEX)"}',
         )
 
-        return  # Visualization metric does not return a numeric score
+        return str(
+            (
+                ref_plot_output,
+                os.path.join(self.traj_dir, "target_stacked_bar_plot.png"),
+            )
+        )  # return the path of the images to store in db

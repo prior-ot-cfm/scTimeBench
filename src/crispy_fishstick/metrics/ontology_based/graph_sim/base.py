@@ -27,12 +27,21 @@ class GraphSimMetric(OntologyBasedMetrics):
     def _defaults(self):
         return {
             "edge_threshold": 0.1,
+            "from_tp_zero": False,
         }
 
     def _setup_trajectory_inference_model(self):
+        traj_infer_config = self.metric_config.get("trajectory_infer_model", {})
+
+        assert (
+            "from_tp_zero" not in traj_infer_config
+            or traj_infer_config["from_tp_zero"] == self.params["from_tp_zero"]
+        ), "from_tp_zero in trajectory inference config must either not be defined, or match from_tp_zero in metric config."
+        traj_infer_config["from_tp_zero"] = self.params["from_tp_zero"]
+
         self.trajectory_infer_model = (
             TrajectoryInferenceMethodFactory().get_trajectory_infer_method(
-                self.metric_config.get("trajectory_infer_model", {})
+                traj_infer_config
             )
         )
         self.params["trajectory_infer_model"] = str(self.trajectory_infer_model)
@@ -42,10 +51,20 @@ class GraphSimMetric(OntologyBasedMetrics):
         # where we define the output embedding name
         # as well as the required features and outputs
         if self.trajectory_infer_model.uses_gene_expr():
-            primary_outputs = [
-                RequiredOutputFiles.NEXT_TIMEPOINT_GENE_EXPRESSION,
-            ]
+            primary_outputs = (
+                [
+                    RequiredOutputFiles.NEXT_TIMEPOINT_GENE_EXPRESSION,
+                ]
+                if not self.params["from_tp_zero"]
+                else [
+                    RequiredOutputFiles.FROM_ZERO_TO_END_PRED_GEX,
+                ]
+            )
         else:
+            assert not self.params["from_tp_zero"], (
+                "from_tp_zero can only be True if the "
+                "trajectory inference model uses gene expression."
+            )
             primary_outputs = [
                 RequiredOutputFiles.EMBEDDING,
                 RequiredOutputFiles.NEXT_TIMEPOINT_EMBEDDING,
