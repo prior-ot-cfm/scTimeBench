@@ -8,8 +8,6 @@ from crispy_fishstick.shared.dataset.registry import (
     MaDataset,
 )
 
-import os
-
 
 class OntologyBasedMetrics(BaseMetric):
     def _setup_supported_datasets(self):
@@ -23,15 +21,6 @@ class OntologyBasedMetrics(BaseMetric):
         ]
 
         self.default_dataset_group = "ontology_based"
-
-        # get the path to the shared default datasets config
-        self.default_datasets_path = os.path.join(
-            os.path.dirname(__file__), "..", "shared", "default_datasets.yaml"
-        )
-
-        self.optional_datasets_path = os.path.join(
-            os.path.dirname(__file__), "..", "shared", "optional_datasets.yaml"
-        )
 
     def _defaults(self):
         """The default parameters for ontology-based metrics."""

@@ -58,7 +58,13 @@ class BaseMetric:
         self.config = config
         self.metric_config = metric_config
         self.params = {}
-        self.optional_datasets_path = None
+
+        self.DEFAULT_DATASETS_PATH = os.path.join(
+            os.path.dirname(__file__), "shared", "default_datasets.yaml"
+        )
+        self.OPTIONAL_DATASETS_PATH = os.path.join(
+            os.path.dirname(__file__), "shared", "optional_datasets.yaml"
+        )
 
         # skip the preprocessing steps if it has submetrics, as they will handle it themselves
         if len(self.submetrics) > 0:
@@ -416,11 +422,7 @@ class BaseMetric:
             3. Creates the dataset instances with the appropriate filters applied.
         """
         # first we create default datasets to be used
-        assert hasattr(
-            self, "default_datasets_path"
-        ), "If datasets are not specified in the config, the metric subclass must define default_datasets_path."
-
-        with open(self.default_datasets_path, "r") as f:
+        with open(self.DEFAULT_DATASETS_PATH, "r") as f:
             default_dataset_config = yaml.safe_load(f) or {}
 
         default_datasets = default_dataset_config.get("datasets", [])
@@ -434,9 +436,8 @@ class BaseMetric:
             default_dataset_tags = group_config.get("dataset_tags", None)
 
         optional_datasets = []
-        if self.optional_datasets_path is not None:
-            with open(self.optional_datasets_path, "r") as f:
-                optional_datasets = yaml.safe_load(f)["datasets"]
+        with open(self.OPTIONAL_DATASETS_PATH, "r") as f:
+            optional_datasets = yaml.safe_load(f)["datasets"]
 
         # now we check if datasets are specified in the config
         if not hasattr(self.config, "datasets") or len(self.config.datasets) == 0:

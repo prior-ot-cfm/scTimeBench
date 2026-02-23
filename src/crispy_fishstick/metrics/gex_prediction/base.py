@@ -13,7 +13,6 @@ from crispy_fishstick.shared.dataset.registry import (
 
 
 import json
-import os
 
 
 class GexPredictionMetrics(BaseMetric):
@@ -29,11 +28,6 @@ class GexPredictionMetrics(BaseMetric):
         ]
 
         self.default_dataset_group = "gex_prediction"
-
-        # get the path to the shared default datasets config
-        self.default_datasets_path = os.path.join(
-            os.path.dirname(__file__), "..", "shared", "default_datasets.yaml"
-        )
 
     def _defaults(self):
         """The default parameters for gene expression prediction metrics."""
