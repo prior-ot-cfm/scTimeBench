@@ -334,7 +334,7 @@ class MIOFlow(BaseModel):
             self.model,
             df_for_gen,
             n_points=n_sim_cells,
-            sample_with_replacement=True,
+            sample_with_replacement=False,
             use_cuda=torch.cuda.is_available(),
             samples_key="samples",
             sample_time=all_tp_indices,

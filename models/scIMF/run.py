@@ -390,8 +390,9 @@ class scIMF(BaseModel):
         if data_t0 is None:
             raise ValueError("Unable to resolve timepoint 0 data for scIMF generation.")
 
-        tp_counts = [int((cell_tps == tp).sum()) for tp in ordered_unique_tps]
-        n_sim_cells = max(tp_counts) if tp_counts else data_t0.shape[0]
+        # tp_counts = [int((cell_tps == tp).sum()) for tp in ordered_unique_tps]
+        # n_sim_cells = max(tp_counts) if tp_counts else data_t0.shape[0]
+        n_sim_cells = int(data_t0.shape[0])
 
         ts = torch.FloatTensor(list(range(n_tps))).to(self.device)
         with torch.no_grad():

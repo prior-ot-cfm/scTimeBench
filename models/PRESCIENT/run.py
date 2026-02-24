@@ -32,6 +32,15 @@ def _sorted_unique(values):
         return list(sorted(np.unique(values).tolist()))
 
 
+def _build_tp_to_idx(values):
+    unique_tps = _sorted_unique(values)
+    return unique_tps, {tp: idx for idx, tp in enumerate(unique_tps)}
+
+
+def _map_tp_indices(tp_to_idx, values) -> np.ndarray:
+    return np.array([tp_to_idx[v] for v in values], dtype=int)
+
+
 def _import_prescient():
     try:
         from prescient.train.run import run as prescient_train_run  # type: ignore
@@ -145,9 +154,8 @@ def _prepare_prescient_data(
     X = _ensure_dense(ann_data.X)
     genes = ann_data.var.index.values
     tps_raw = ann_data.obs[time_col].to_numpy()
-    unique_tps = _sorted_unique(tps_raw)
-    tp_to_idx = {tp: idx for idx, tp in enumerate(unique_tps)}
-    tps_idx = np.array([tp_to_idx[v] for v in tps_raw], dtype=int)
+    unique_tps, tp_to_idx = _build_tp_to_idx(tps_raw)
+    tps_idx = _map_tp_indices(tp_to_idx, tps_raw)
 
     celltype_col = ObservationColumns.CELL_TYPE.value
     if celltype_col in ann_data.obs.columns:
@@ -260,13 +268,16 @@ class PRESCIENT(BaseModel):
 
         if os.path.exists(cache_path):
             print("Trained PRESCIENT model found, loading from file.")
-            cache = torch.load(cache_path, map_location="cpu")
+            cache = torch.load(cache_path, map_location="cpu", weights_only=False)
             self.data_path = cache["data_path"]
             self.scaler = cache["scaler"]
             self.pca = cache["pca"]
             self.um = cache.get("um")
-            self.unique_tps = cache["unique_tps"]
-            self.tp_to_idx = cache["tp_to_idx"]
+            cached_unique_tps = cache["unique_tps"]
+            if all_tps:
+                self.unique_tps, self.tp_to_idx = _build_tp_to_idx(all_tps)
+            else:
+                self.unique_tps, self.tp_to_idx = _build_tp_to_idx(cached_unique_tps)
             self.model_dir = cache.get("model_dir", self.config["output_path"])
             return
 
@@ -277,24 +288,27 @@ class PRESCIENT(BaseModel):
         if not all_tps:
             all_tps = ann_data.obs[time_col].unique().tolist()
 
-        self.unique_tps = _sorted_unique(all_tps)
+        self.unique_tps, self.tp_to_idx = _build_tp_to_idx(all_tps)
         if len(self.unique_tps) < 2:
             raise ValueError("At least two timepoints are required for training")
-
-        self.tp_to_idx = {tp: idx for idx, tp in enumerate(self.unique_tps)}
 
         k_dim = int(metadata.get("k_dim", 50))
         num_neighbors_umap = int(metadata.get("num_neighbors_umap", 10))
 
-        data_pt, scaler, pca, um, unique_tps, tp_to_idx = _prepare_prescient_data(
+        (
+            data_pt,
+            scaler,
+            pca,
+            um,
+            _train_unique_tps,
+            _train_tp_to_idx,
+        ) = _prepare_prescient_data(
             ann_data,
             time_col=time_col,
             k_dim=k_dim,
             num_neighbors_umap=num_neighbors_umap,
         )
-
-        self.unique_tps = unique_tps
-        self.tp_to_idx = tp_to_idx
+        # Keep the mapping built from all_tps to avoid missing test-only timepoints.
 
         data_path = os.path.join(self.config["output_path"], "prescient_data.pt")
         torch.save(data_pt, data_path, pickle_protocol=4)
@@ -343,8 +357,7 @@ class PRESCIENT(BaseModel):
         self.scaler = scaler
         self.pca = pca
         self.um = um
-        self.unique_tps = unique_tps
-        self.tp_to_idx = tp_to_idx
+        # Keep the mapping built from all_tps to cover test-only timepoints.
         self.model_dir = config.out_dir
 
         torch.save(
@@ -370,15 +383,17 @@ class PRESCIENT(BaseModel):
             )
 
         metadata = self.config.get("model", {}).get("metadata", {})
-        n_sim_cells = int(metadata.get("n_sim_cells", 2000))
 
         time_col = ObservationColumns.TIMEPOINT.value
         cell_tps = test_ann_data.obs[time_col].to_numpy()
-        tp_idx = np.array([self.tp_to_idx[t] for t in cell_tps], dtype=int)
+        tp_idx = _map_tp_indices(self.tp_to_idx, cell_tps)
 
         _prescient_train_run, AutoGenerator, prescient_sim = _import_prescient()
 
         data_pt = torch.load(self.data_path, weights_only=False)
+        #  n_sim_cells = int(metadata.get("n_sim_cells", 2000))
+        start_idx = 0
+        n_sim_cells = int(data_pt["xp"][start_idx].shape[0])
         config_path = os.path.join(self.model_dir, "config.pt")
         config = SimpleNamespace(**torch.load(config_path, weights_only=False))
 
