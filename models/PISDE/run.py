@@ -216,22 +216,22 @@ class PISDE(BaseModel):
         if not all_tps:
             all_tps = ann_data.obs[time_col].unique().tolist()
 
-        unique_tps = _sorted_unique(all_tps)
-        unique_tps, tp_counts = _filter_timepoints_with_data(
-            ann_data, unique_tps, time_col
+        unique_tps_all = _sorted_unique(all_tps)
+        train_tps, tp_counts = _filter_timepoints_with_data(
+            ann_data, unique_tps_all, time_col
         )
-        dropped = [tp for tp, count in tp_counts.items() if count == 0]
+        dropped = [tp for tp in unique_tps_all if tp_counts.get(tp, 0) == 0]
         if dropped:
             print(
-                "Dropping timepoints with no training cells for PI-SDE: "
+                "Training has no cells for timepoints; keeping for generation: "
                 + ", ".join(map(str, dropped))
             )
-        if len(unique_tps) < 2:
+        if len(train_tps) < 2:
             raise ValueError("At least two timepoints are required for training")
 
-        tp_to_idx = {tp: idx for idx, tp in enumerate(unique_tps)}
+        tp_to_idx = {tp: idx for idx, tp in enumerate(unique_tps_all)}
 
-        data_dict = _build_pisde_data(ann_data, unique_tps, tp_to_idx, time_col)
+        data_dict = _build_pisde_data(ann_data, unique_tps_all, tp_to_idx, time_col)
 
         data_path = os.path.join(self.config["output_path"], "pisde_data.pt")
         torch.save({"xp": data_dict["xp"], "y": data_dict["y"]}, data_path)
@@ -270,17 +270,26 @@ class PISDE(BaseModel):
         args.sigma_type = metadata.get("sigma_type", args.sigma_type)
         args.sigma_const = float(metadata.get("sigma_const", args.sigma_const))
 
-        min_count = min(tp_counts[tp] for tp in unique_tps) if unique_tps else 0
+        min_count = min(tp_counts[tp] for tp in train_tps) if train_tps else 0
         args.train_batch = _clamp_train_batch_ratio(args.train_batch, min_count)
 
-        n_tps = len(unique_tps)
+        n_tps = len(unique_tps_all)
+        trainable_idx = sorted({tp_to_idx[tp] for tp in train_tps})
         train_t = metadata.get("train_t", list(range(1, n_tps)))
-        args.train_t = sorted([int(t) for t in train_t if 0 <= int(t) < n_tps])
+        args.train_t = sorted(
+            [int(t) for t in train_t if 0 <= int(t) < n_tps and int(t) in trainable_idx]
+        )
         if not args.train_t:
             raise ValueError("Training timepoint list is empty after filtering.")
         args.start_t = int(metadata.get("start_t", 0))
         if args.start_t < 0 or args.start_t >= n_tps:
             raise ValueError("start_t is out of range after filtering timepoints.")
+        if args.start_t not in trainable_idx:
+            args.start_t = trainable_idx[0]
+        print(
+            "PI-SDE timepoint mapping: all=%s, trainable_idx=%s, start_t=%s"
+            % (unique_tps_all, trainable_idx, args.start_t)
+        )
 
         leaveouts = metadata.get("leaveouts", None)
         try:
@@ -310,7 +319,7 @@ class PISDE(BaseModel):
 
         self.data_path = data_path
         self.config_dir = config.out_dir
-        self.unique_tps = unique_tps
+        self.unique_tps = unique_tps_all
         self.tp_to_idx = tp_to_idx
         self.embedding_dim = int(metadata.get("embedding_dim", 50))
 
@@ -350,7 +359,6 @@ class PISDE(BaseModel):
             return self._cached_sim_tp, self._cached_tp_idx
 
         metadata = self.config.get("model", {}).get("metadata", {})
-        n_sim_cells = int(metadata.get("n_sim_cells", 2000))
 
         config_pt = os.path.join(self.config_dir, "config.pt")
         config_dict = torch.load(config_pt, weights_only=False)
@@ -370,6 +378,8 @@ class PISDE(BaseModel):
         model.eval()
 
         x, y, _ = load_data(config)
+        #  n_sim_cells = int(metadata.get("n_sim_cells", 2000))
+        n_sim_cells = int(x[config.start_t].shape[0])
         x_0, _ = pisde_train.p_samp(x[config.start_t], n_sim_cells)
         r_0 = torch.zeros(int(n_sim_cells)).unsqueeze(1)
         x_r_0 = torch.cat([x_0, r_0], dim=1).to(device)
