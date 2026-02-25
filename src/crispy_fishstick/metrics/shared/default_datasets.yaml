@@ -69,6 +69,21 @@ datasets:
       - name: LogNormFilter
       - name: CopySplitFilter
 
+  - name: MaDataset
+    tag: defaultMaPseudotimeEvenCells
+    data_path: ./data/ma/ma.h5ad
+    requires_caching: true
+    filters:
+      - name: LineageDatasetFilter
+        cell_lineage_file: ./examples/cell_lineages/pancreas/trunk_lineage.txt
+      - name: PseudotimeFilter
+        preprocess_type: zheng_hvg
+      - name: RoundingFilter
+        num_tps: 10
+      - name: LogNormFilter
+      - name: CopySplitFilter
+
+
 ### Core Gene Expression Prediction Datasets ###
   - name: MaDataset
     tag: EasyMa
@@ -132,6 +147,7 @@ metric_groups:
       - defaultMa
       - defaultGarciaAlonsoPseudotimeEvenCells
       - defaultSuoPseudotimeEvenCells
+      - defaultMaPseudotimeEvenCells
   gex_prediction:
     dataset_tags:
       - EasyMa

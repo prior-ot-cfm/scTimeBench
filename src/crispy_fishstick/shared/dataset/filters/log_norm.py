@@ -1,5 +1,5 @@
 from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
-from crispy_fishstick.shared.utils import is_log_normalized_to_counts
+from crispy_fishstick.shared.utils import is_log_normalized_to_counts, is_raw
 import scanpy as sc
 import logging
 
@@ -31,15 +31,14 @@ class LogNormFilter(BaseDatasetFilter):
             )
             return ann_data
 
-        is_x_raw = ann_data.X.max() > self._parameters()["counts"]
-        if not is_x_raw and ann_data.raw is None:
+        if not is_raw(ann_data) and ann_data.raw is None:
             raise ValueError(
                 "Data appears to be normalized some other way and does not provide raw data. This could lead to errors down the line "
                 "with cell type lineage prediction. Please ensure that the data is log-normalized to counts=10^4, or that the raw data is provided for proper CellTypist performance."
             )
 
         # we want all the vars, etc. to stay the same, so we just replace X with the raw data
-        if not is_x_raw:
+        if not is_raw(ann_data):
             logging.debug(
                 "Data appears to be log-transformed but not normalized. Using raw data for normalization."
             )
