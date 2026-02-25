@@ -397,6 +397,7 @@ class BaseTrajectoryInferMethod:
         """
         Gets the next cell types for us to use in trajectory inference.
         """
+        test_ann_data = load_test_dataset(output_path)
 
         def sequential_tps():
             """
@@ -457,7 +458,6 @@ class BaseTrajectoryInferMethod:
         logging.debug(
             f"Inferring trajectory using trajectory inference model: {self.__class__.__name__}"
         )
-        test_ann_data = load_test_dataset(output_path)
         # then we run the predict next timepoint to get the embeddings
         next_tp_embed_probs, idx_to_cell_types = self.predict_next_tp(
             output_path, test_ann_data, traj_infer_path
