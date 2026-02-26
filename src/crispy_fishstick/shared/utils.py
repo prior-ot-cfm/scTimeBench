@@ -119,20 +119,29 @@ def load_output_file(output_path, required_output: RequiredOutputFiles):
     return output_file
 
 
-def is_log_normalized_to_counts(ann_data, threshold=20, counts=10_000):
+def is_raw(ann_data: sc.AnnData):
+    """
+    Returns whether the data is raw (i.e. not log-normalized) by checking that:
+    1. All the data is non-negative
+    2. All the data is integer-valued
+    """
+    gex = ann_data.X if isinstance(ann_data.X, np.ndarray) else ann_data.X.toarray()
+    return np.all(gex >= 0) and np.all(np.mod(gex, 1) == 0)
+
+
+def is_log_normalized_to_counts(ann_data, counts=10_000):
     """
     Heuristic to determine if the data is log-normalized to a certain counts threshold.
-    Checks if the maximum value in ann_data.X is less than or equal to the threshold,
-    which would suggest that the data is log-normalized to counts=10_000.
+    Checks if ann_data.X is raw and if not, then checks to see that the data is
+    log-normalized to counts=10_000.
 
     Args:
         ann_data: The AnnData object to check
-        threshold: The threshold value to check against
         counts: The expected counts value (default is 10_000)
 
     Returns:
         True if the data is log-normalized to the expected counts, False otherwise
     """
-    return ann_data.X.max() < threshold and np.allclose(
-        np.sum(np.expm1(ann_data.X), axis=1), 1e4
+    return not is_raw(ann_data) and np.allclose(
+        np.sum(np.expm1(ann_data.X), axis=1), counts
     )
