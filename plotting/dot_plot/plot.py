@@ -1,10 +1,11 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 df = pd.read_csv("data.csv")
 
-# 1. Filter the data
+# 1. Filter Data
 metrics_to_plot = ["JaccardSimilarity", "AUC_PRC", "AUC_ROC"]
 plot_df = df[
     (df["prc_threshold"] == True)
@@ -12,78 +13,90 @@ plot_df = df[
     & (df["metric"].isin(metrics_to_plot))
 ].copy()
 
-# Separate Cooccurrence from the rest for layered plotting
-field_df = plot_df[plot_df["method"] != "Cooccurrence"]
-cooc_df = plot_df[plot_df["method"] == "Cooccurrence"]
+# Sort and prepare combined labels
+plot_df["metric"] = pd.Categorical(
+    plot_df["metric"], categories=metrics_to_plot, ordered=True
+)
+plot_df = plot_df.sort_values(["metric", "dataset"])
 
-# 2. Setup the Grid
+plot_df["x_axis_group"] = (
+    plot_df["dataset"].astype(str) + " | " + plot_df["metric"].astype(str)
+)
+group_order = list(dict.fromkeys(plot_df["x_axis_group"]))
+
+# 2. Setup the Grid - REDUCED ASPECT TO SQUEEZE HORIZONTALLY
+# Aspect is the width/height ratio. Reducing from 3.5 to 1.8 - 2.0 squeezes the X-axis.
 g = sns.FacetGrid(
-    plot_df, row="dataset", col="step_setting", height=4, aspect=1.4, margin_titles=True
+    plot_df,
+    row="step_setting",
+    height=4,  # Slightly shorter height
+    aspect=1.8,  # Much lower aspect ratio = tighter horizontal spacing
+    margin_titles=True,
+    sharex=True,
 )
 
 
-# 3. Custom plotting function to handle layering
+# 3. Plotting Function
 def layered_swarm(data, **kwargs):
     ax = plt.gca()
+    highlight_palette = {"Cooccurrence": "#E63946", "Naive": "#457B9D"}
 
-    # Layer 1: The Field (Colored dots)
-    # Using 'Set2' or 'Paired' gives distinct colors to each method
+    # Layer 1: The Field
     sns.swarmplot(
-        data=data[data["method"].isin(["Cooccurrence", "Worst Case"]) == False],
-        x="metric",
+        data=data[~data["method"].isin(["Cooccurrence", "Naive"])],
+        x="x_axis_group",
         y="result",
         hue="method",
+        order=group_order,
         palette="Set2",
-        size=7,
+        size=4.5,  # Slightly smaller dots to prevent overlap in tight space
         dodge=False,
         ax=ax,
     )
 
-    # Layer 2: Cooccurrence (Larger, different shape)
-    # We plot this on top so it's never hidden by the cluster
-
-    # 1. Define your highlight colors
-    highlight_palette = {
-        "Cooccurrence": "#E63946",  # Deep Red
-        "Worst Case": "#1D3557",  # Dark Navy (or any contrasting color)
-    }
-
-    # 2. Update your Layer 2 code
+    # Layer 2: Highlights
     sns.swarmplot(
-        data=data[data["method"].isin(["Cooccurrence", "Worst Case"])],
-        x="metric",
+        data=data[data["method"].isin(["Cooccurrence", "Naive"])],
+        x="x_axis_group",
         y="result",
-        hue="method",  # Enable hue to use the palette
+        hue="method",
+        order=group_order,
         palette=highlight_palette,
         marker="D",
-        size=7,
-        linewidth=1,
+        size=5.5,
+        linewidth=0.8,
         edgecolor="black",
         dodge=False,
         ax=ax,
-        legend=False,  # Usually False here to avoid duplicate legends in facets
     )
 
-    # Clean up duplicate legends
-    handles, labels = ax.get_legend_handles_labels()
-    ax.legend_.remove() if ax.legend_ else None
+    if ax.get_legend():
+        ax.get_legend().remove()
 
 
-# 4. Map the custom function
+# 4. Map the function
 g.map_dataframe(layered_swarm)
 
 # 5. Final Polish
-g.set(ylim=(0, 1))
+g.set(ylim=(0, 1.05))
 g.set_axis_labels("", "Score (0.0 - 1.0)")
 
-for (row_val, col_val), ax in g.axes_dict.items():
-    ax.axhline(1.0, color="black", linestyle=":", alpha=0.3)
-    # Fill the 'Underperformance' area
-    ax.axhspan(0, 0.5, color="red", alpha=0.02)
+for ax in g.axes.flat:
+    ax.set_xticks(range(len(group_order)))
+    ax.set_xticklabels(
+        group_order, rotation=90, ha="center", fontsize=7
+    )  # Smaller font for tight space
 
-# Create a custom legend manually to ensure the Diamond shows up
-from matplotlib.lines import Line2D
+    # Visual separation between Dataset blocks
+    for i in range(len(group_order)):
+        if (i + 1) % len(metrics_to_plot) == 0:
+            ax.axvline(i + 0.5, color="black", linestyle="-", alpha=0.1, linewidth=1)
 
+# Legend adjustment
+other_methods = [
+    m for m in plot_df["method"].unique() if m not in ["Cooccurrence", "Naive"]
+]
+colors = sns.color_palette("Set2", len(other_methods))
 legend_elements = [
     Line2D(
         [0],
@@ -99,15 +112,11 @@ legend_elements = [
         [0],
         marker="D",
         color="w",
-        label="Worst Case",
+        label="Naive",
         markerfacecolor="#457B9D",
         markeredgecolor="black",
     ),
 ]
-
-# Add the rest of the methods to the legend
-other_methods = field_df["method"].unique()
-colors = sns.color_palette("Set2", len(other_methods))
 for i, m in enumerate(other_methods):
     legend_elements.append(
         Line2D(
@@ -117,19 +126,23 @@ for i, m in enumerate(other_methods):
             color="w",
             label=m,
             markerfacecolor=colors[i],
-            markersize=6,
+            markersize=5,
         )
     )
 
+# Move legend slightly closer
 g.fig.legend(
     handles=legend_elements,
     loc="center right",
-    bbox_to_anchor=(1.15, 0.5),
+    bbox_to_anchor=(1.05, 0.5),
     title="Methods",
+    fontsize="small",
 )
 
-plt.subplots_adjust(top=0.9, right=0.85)
-g.fig.suptitle("Cooccurrence vs. Others: Absolute Performance Gap", fontsize=15)
+# Final layout compression
+plt.subplots_adjust(top=0.9, right=0.85, bottom=0.35, hspace=0.4)
+# Optional: force a specific width for the whole figure
+# g.fig.set_size_inches(12, 8)
 
-plt.savefig("dot_plot.png", dpi=300, bbox_inches="tight")
+plt.savefig("dot_plot.svg", format="svg", bbox_inches="tight")
 plt.show()
