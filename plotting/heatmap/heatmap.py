@@ -11,7 +11,7 @@ df = pd.read_csv("heatmap.csv")
 # 2. Pivot to get Real Time and Pseudotime side-by-side to calculate LFC
 # We pivot based on dataset, setting, metric, and method
 pivot_df = df.pivot_table(
-    index=["dataset", "setting", "metric", "method"],
+    index=["dataset", "step_setting", "metric", "method", "prc_threshold"],
     columns="time_type",
     values="result",
 ).reset_index()
@@ -23,12 +23,23 @@ pivot_df["LFC"] = np.log2(pivot_df["Pseudotime"] / pivot_df["Real Time"])
 
 # 4. Iterate through each dataset and setting to create separate heatmaps
 datasets = pivot_df["dataset"].unique()
-path_types = pivot_df["setting"].unique()
+path_types = pivot_df["step_setting"].unique()
+prc_thresholds = pivot_df["prc_threshold"].unique()
 
 for ds in datasets:
     for pt in path_types:
+        print(f"Processing Dataset: {ds}, Step Setting: {pt}")
+
+        # let's choose prc_threshold to true if step_setting is 'all_paths'
+        # and false otherwise
+        prc_threshold = True
         # Filter for the specific dataset and setting combination
-        subset = pivot_df[(pivot_df["dataset"] == ds) & (pivot_df["setting"] == pt)]
+        subset = pivot_df[
+            (pivot_df["dataset"] == ds)
+            & (pivot_df["step_setting"] == pt)
+            & (pivot_df["prc_threshold"] == prc_threshold)
+            & (pivot_df["metric"].isin(["AUC_PRC", "AUC_ROC", "JaccardSimilarity"]))
+        ]
 
         # If no data exists for this specific combination, skip it
         if subset.empty:

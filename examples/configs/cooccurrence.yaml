@@ -2,8 +2,12 @@ model:
   name: Cooccurrence
   train_and_test_script: ./models/cooccurrence/train_and_test.sh
 
+# metrics:
+#   - name: GraphSimMetric
+
 metrics:
-  - name: GraphSimMetric
+  - name: JaccardSimilarity
+    prc_threshold: False
 
 metrics_skiplist:
   - name: StackedBarPlot

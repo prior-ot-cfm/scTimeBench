@@ -2,5 +2,9 @@ model:
   name: Moscot
   train_and_test_script: ./models/moscot/train_and_test.sh
 
+# metrics:
+#   - name: GraphSimMetric
+
 metrics:
-  - name: GraphSimMetric
+  - name: JaccardSimilarity
+    prc_threshold: False
