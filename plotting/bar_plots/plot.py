@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 import os
 
 # 1. Load Data
-df = pd.read_csv("new_bar.csv")
+df = pd.read_csv("bar.csv")
 
 # 2. Setup Global Color Consistency
 all_methods = sorted(df["method"].unique())
 palette = dict(zip(all_methods, sns.color_palette("tab10", len(all_methods))))
 
-# 3. Filter for 'Real Time'
+# 3. Filter for 'Real Time' and prc threshold = True
 df_rt = df[df["time_type"] == "Real Time"].copy()
 
 # 4. Prepare Data for Plotting
@@ -33,8 +33,13 @@ def process_threshold(val):
 df_thresh["result"] = df_thresh["result"].apply(process_threshold)
 df_thresh["metric"] = "1 - Threshold"
 
+# only get the threshold from prc_threshold = True and per each dataset and step_setting
+df_thresh = df_thresh[df_thresh["prc_threshold"] == True].copy()
+print(df_thresh)
+
 # Combine them back
-plot_df = pd.concat([df_metrics, df_thresh]).reset_index(drop=True)
+# plot_df = pd.concat([df_metrics, df_thresh]).reset_index(drop=True)
+plot_df = df_metrics.copy()
 
 # Rename for your existing plotting logic
 plot_df = plot_df.rename(
@@ -47,7 +52,11 @@ settings = plot_df["setting"].unique()
 
 for ds in datasets:
     for st in settings:
-        subset = plot_df[(plot_df["dataset"] == ds) & (plot_df["setting"] == st)].copy()
+        subset = plot_df[
+            (plot_df["dataset"] == ds)
+            & (plot_df["setting"] == st)
+            & (plot_df["prc_threshold"] == True)
+        ].copy()
 
         if subset.empty:
             continue

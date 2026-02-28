@@ -15,7 +15,9 @@ df_filtered = df[
 # Pivot so 'threshold', 'PRECISION', and 'RECALL' become columns
 # Index includes method, dataset, and step_setting to keep unique experiments together
 df_pivot = df_filtered.pivot(
-    index=["method", "dataset", "step_setting"], columns="metric", values="result"
+    index=["method", "dataset", "step_setting", "prc_threshold"],
+    columns="metric",
+    values="result",
 ).reset_index()
 
 # 3. Create the Visualization
