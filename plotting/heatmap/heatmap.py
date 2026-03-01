@@ -27,7 +27,9 @@ pivot_df = df.pivot_table(
     values="result",
 ).reset_index()
 
-pivot_df["LFC"] = np.log2(pivot_df["Pseudotime"] / pivot_df["Real Time"])
+pivot_df["LFC"] = np.log2(
+    pivot_df["Pseudotime"] / pivot_df["Real Time"] + np.finfo(float).eps
+)  # Add small value to avoid log(0)
 
 # 3. Filter Logic
 pivot_df = pivot_df[
@@ -35,46 +37,97 @@ pivot_df = pivot_df[
 ]
 
 # 4. Get unique step_settings to determine number of subplots
+# ... (previous code)
+
+# 4. Get unique step_settings
 step_settings = pivot_df["step_setting"].unique()
 fig, axes = plt.subplots(len(step_settings), 1, figsize=(14, 8 * len(step_settings)))
 
-# Ensure axes is an array even if there is only one setting
 if len(step_settings) == 1:
     axes = [axes]
 
-# Global max for a consistent colorbar across all subplots
-clean_vals = pivot_df.replace([np.inf, -np.inf], np.nan)
-max_abs = clean_vals["LFC"].abs().max()
-if pd.isna(max_abs) or max_abs == 0:
-    max_abs = 1
+# STEEPER GRADIENT LOGIC:
+# We cap the visual range at 1.5. This means anything > 1.5x (or < -1.5x)
+# is fully saturated, making the "middle" transitions much sharper.
+# VISUAL_LIMIT = 1.5
+# clean_vals = pivot_df.replace([np.inf, -np.inf], np.nan)
+# actual_max = clean_vals["LFC"].abs().max()
+# v_limit = min(actual_max, VISUAL_LIMIT) if not pd.isna(actual_max) else 1
 
 # 5. Plotting Loop
 for i, setting in enumerate(step_settings):
     ax = axes[i]
-    # Filter data for this specific setting
     setting_df = pivot_df[pivot_df["step_setting"] == setting]
-
-    # Final Pivot for this subplot
     subplot_pivot = setting_df.pivot_table(
         index=["dataset", "metric"], columns="method", values="LFC"
     )
 
-    # Set grey background for NaNs
     ax.set_facecolor("#E0E0E0")
 
-    # Draw Heatmap
+    from matplotlib.colors import TwoSlopeNorm
+
+    # --- Inside your loop, before sns.heatmap ---
+    # This forces the "center" to be 0 and creates a steep gradient
+    # even if the max/min are far apart.
+    # Global max for a consistent colorbar across all subplots
+    clean_vals = pivot_df.replace([np.inf, -np.inf], np.nan)
+    max_abs = clean_vals["LFC"].abs().max()
+    if pd.isna(max_abs) or max_abs == 0:
+        max_abs = 1
+    norm = TwoSlopeNorm(vmin=-max_abs, vcenter=0, vmax=max_abs)
+
     sns.heatmap(
         subplot_pivot,
         annot=False,
-        cmap="RdBu_r",
-        center=0,
-        vmin=-max_abs,
-        vmax=max_abs,
+        cmap="seismic",
+        norm=norm,
         square=True,
         linewidths=0.5,
-        cbar_kws={"label": "Log2 Fold Change"} if i == 0 else None,  # Only one legend
+        cbar_kws={"label": "Log2 Fold Change"} if i == 0 else None,
         ax=ax,
     )
+    # ... (rest of the code)
+
+    # step_settings = pivot_df["step_setting"].unique()
+    # fig, axes = plt.subplots(len(step_settings), 1, figsize=(14, 8 * len(step_settings)))
+
+    # # Ensure axes is an array even if there is only one setting
+    # if len(step_settings) == 1:
+    #     axes = [axes]
+
+    # # Global max for a consistent colorbar across all subplots
+    # clean_vals = pivot_df.replace([np.inf, -np.inf], np.nan)
+    # max_abs = clean_vals["LFC"].abs().max()
+    # if pd.isna(max_abs) or max_abs == 0:
+    #     max_abs = 1
+
+    # # 5. Plotting Loop
+    # for i, setting in enumerate(step_settings):
+    #     ax = axes[i]
+    #     # Filter data for this specific setting
+    #     setting_df = pivot_df[pivot_df["step_setting"] == setting]
+
+    #     # Final Pivot for this subplot
+    #     subplot_pivot = setting_df.pivot_table(
+    #         index=["dataset", "metric"], columns="method", values="LFC"
+    #     )
+
+    #     # Set grey background for NaNs
+    #     ax.set_facecolor("#E0E0E0")
+
+    #     # Draw Heatmap
+    #     sns.heatmap(
+    #         subplot_pivot,
+    #         annot=False,
+    #         cmap="RdBu_r",
+    #         center=0,
+    #         vmin=-max_abs,
+    #         vmax=max_abs,
+    #         square=True,
+    #         linewidths=0.5,
+    #         cbar_kws={"label": "Log2 Fold Change"} if i == 0 else None,  # Only one legend
+    #         ax=ax,
+    #     )
 
     # 6. MANUALLY DRAW SLASHES for this subplot
     rows, cols = subplot_pivot.shape
