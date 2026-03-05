@@ -39,11 +39,12 @@ g = sns.FacetGrid(
 # 3. Plotting Function
 def layered_swarm(data, **kwargs):
     ax = plt.gca()
-    highlight_palette = {"Cooccurrence": "#E63946", "Naive": "#457B9D"}
+    highlight_palette = {"Correlation": "#E63946", "Random": "#457B9D"}
 
     # Layer 1: The Field
     sns.swarmplot(
-        data=data[~data["method"].isin(["Cooccurrence", "Naive"])],
+        # data=data[~data["method"].isin(["Correlation", "Random"])],
+        data=data,
         x="x_axis_group",
         y="result",
         hue="method",
@@ -54,21 +55,21 @@ def layered_swarm(data, **kwargs):
         ax=ax,
     )
 
-    # Layer 2: Highlights
-    sns.swarmplot(
-        data=data[data["method"].isin(["Cooccurrence", "Naive"])],
-        x="x_axis_group",
-        y="result",
-        hue="method",
-        order=group_order,
-        palette=highlight_palette,
-        marker="D",
-        size=5.5,
-        linewidth=0.8,
-        edgecolor="black",
-        dodge=False,
-        ax=ax,
-    )
+    # # Layer 2: Highlights
+    # sns.swarmplot(
+    #     data=data[data["method"].isin(["Correlation", "Random"])],
+    #     x="x_axis_group",
+    #     y="result",
+    #     hue="method",
+    #     order=group_order,
+    #     palette=highlight_palette,
+    #     marker="D",
+    #     size=5.5,
+    #     linewidth=0.8,
+    #     edgecolor="black",
+    #     dodge=False,
+    #     ax=ax,
+    # )
 
     if ax.get_legend():
         ax.get_legend().remove()
@@ -94,29 +95,32 @@ for ax in g.axes.flat:
 
 # Legend adjustment
 other_methods = [
-    m for m in plot_df["method"].unique() if m not in ["Cooccurrence", "Naive"]
+    # m for m in plot_df["method"].unique() if m not in ["Correlation", "Random"]
+    m
+    for m in plot_df["method"].unique()
 ]
 colors = sns.color_palette("Set2", len(other_methods))
-legend_elements = [
-    Line2D(
-        [0],
-        [0],
-        marker="D",
-        color="w",
-        label="Cooccurrence",
-        markerfacecolor="#E63946",
-        markeredgecolor="black",
-    ),
-    Line2D(
-        [0],
-        [0],
-        marker="D",
-        color="w",
-        label="Naive",
-        markerfacecolor="#457B9D",
-        markeredgecolor="black",
-    ),
-]
+# legend_elements = [
+#     Line2D(
+#         [0],
+#         [0],
+#         marker="D",
+#         color="w",
+#         label="Correlation",
+#         markerfacecolor="#E63946",
+#         markeredgecolor="black",
+#     ),
+#     Line2D(
+#         [0],
+#         [0],
+#         marker="D",
+#         color="w",
+#         label="Random",
+#         markerfacecolor="#457B9D",
+#         markeredgecolor="black",
+#     ),
+# ]
+legend_elements = []
 for i, m in enumerate(other_methods):
     legend_elements.append(
         Line2D(
