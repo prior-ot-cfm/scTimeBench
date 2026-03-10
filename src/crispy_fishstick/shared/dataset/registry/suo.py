@@ -2,7 +2,7 @@
 Suo et al. (2022) dataset.
 """
 
-from crispy_fishstick.shared.dataset.base import BaseDataset, ObservationColumns
+from scTimeBench.shared.dataset.base import BaseDataset, ObservationColumns
 import scanpy as sc
 
 

@@ -2,9 +2,9 @@
 Graph Similarity Metric Base Class
 """
 
-from crispy_fishstick.metrics.embeddings.aggregate.base import AggregateEmbeddingMetrics
-from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputFiles
-from crispy_fishstick.shared.utils import load_test_dataset, load_output_file
+from scTimeBench.metrics.embeddings.aggregate.base import AggregateEmbeddingMetrics
+from scTimeBench.shared.constants import ObservationColumns, RequiredOutputFiles
+from scTimeBench.shared.utils import load_test_dataset, load_output_file
 
 import json
 import logging

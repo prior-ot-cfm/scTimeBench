@@ -1,7 +1,7 @@
 """
 Wasserstein (Sinkhorn) OT loss for gene expression prediction.
 """
-from crispy_fishstick.metrics.gex_prediction.ot_eval.base import OTLossMetric
+from scTimeBench.metrics.gex_prediction.ot_eval.base import OTLossMetric
 
 import torch
 from geomloss import SamplesLoss

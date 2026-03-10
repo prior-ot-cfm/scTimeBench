@@ -6,8 +6,8 @@ from enum import Enum
 
 class ObservationColumns(Enum):
     # need to prefix it so that it does not conflict with user data
-    CELL_TYPE = "crispy_fishstick_cell_type"
-    TIMEPOINT = "crispy_fishstick_timepoint"
+    CELL_TYPE = "scTimeBench_cell_type"
+    TIMEPOINT = "scTimeBench_timepoint"
 
 
 class RequiredOutputFiles(Enum):

@@ -1,5 +1,5 @@
-from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
-from crispy_fishstick.shared.constants import ObservationColumns
+from scTimeBench.shared.dataset.base import BaseDatasetFilter
+from scTimeBench.shared.constants import ObservationColumns
 import random
 
 

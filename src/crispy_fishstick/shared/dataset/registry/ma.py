@@ -2,7 +2,7 @@
 Ma et al. (2023) dataset.
 """
 
-from crispy_fishstick.shared.dataset.base import BaseDataset, ObservationColumns
+from scTimeBench.shared.dataset.base import BaseDataset, ObservationColumns
 import scanpy as sc
 
 
@@ -18,8 +18,8 @@ class MaDataset(BaseDataset):
 
         self.data.obs = self.data.obs.rename(
             columns={
-                'cell_type': ObservationColumns.CELL_TYPE.value,
-                'timepoint': ObservationColumns.TIMEPOINT.value,
+                "cell_type": ObservationColumns.CELL_TYPE.value,
+                "timepoint": ObservationColumns.TIMEPOINT.value,
             }
         )
         print("Ma et al. dataset loaded successfully.")

@@ -1,5 +1,5 @@
-from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
-from crispy_fishstick.shared.utils import is_log_normalized_to_counts, is_raw
+from scTimeBench.shared.dataset.base import BaseDatasetFilter
+from scTimeBench.shared.utils import is_log_normalized_to_counts, is_raw
 import scanpy as sc
 import logging
 

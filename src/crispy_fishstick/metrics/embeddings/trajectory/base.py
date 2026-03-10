@@ -1,14 +1,14 @@
 """
 Embedding-based metrics.
 """
-from crispy_fishstick.metrics.base import skip_metric
-from crispy_fishstick.metrics.embeddings.base import EmbeddingMetrics
-from crispy_fishstick.shared.constants import RequiredOutputFiles
-from crispy_fishstick.trajectory_infer.base import (
+from scTimeBench.metrics.base import skip_metric
+from scTimeBench.metrics.embeddings.base import EmbeddingMetrics
+from scTimeBench.shared.constants import RequiredOutputFiles
+from scTimeBench.trajectory_infer.base import (
     TrajectoryInferenceMethodFactory,
     BaseTrajectoryInferMethod,
 )
-from crispy_fishstick.trajectory_infer.classifier import Classifier
+from scTimeBench.trajectory_infer.classifier import Classifier
 from sklearn.metrics import f1_score, classification_report
 
 import logging

@@ -10,12 +10,12 @@ including the setup of tables for storing:
 """
 
 import sqlite3
-from crispy_fishstick.config import Config
+from scTimeBench.config import Config
 from pathlib import Path
 import csv
 
-from crispy_fishstick.metrics.model_manager import ModelManager
-from crispy_fishstick.shared.dataset.base import (
+from scTimeBench.metrics.model_manager import ModelManager
+from scTimeBench.shared.dataset.base import (
     BaseDataset,
     DATASET_FILTER_REGISTRY,
     DATASET_REGISTRY,

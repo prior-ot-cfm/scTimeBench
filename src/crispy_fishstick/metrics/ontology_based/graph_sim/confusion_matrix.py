@@ -1,4 +1,4 @@
-from crispy_fishstick.metrics.ontology_based.graph_sim.base import (
+from scTimeBench.metrics.ontology_based.graph_sim.base import (
     GraphSimMetric,
     AdjacencyMatrixType,
     ThresholdCriteria,

@@ -1,8 +1,8 @@
 """
 Embedding-based metrics.
 """
-from crispy_fishstick.metrics.base import BaseMetric
-from crispy_fishstick.shared.dataset.registry import (
+from scTimeBench.metrics.base import BaseMetric
+from scTimeBench.shared.dataset.registry import (
     SuoDataset,
     GarciaAlonsoDataset,
     MaDataset,

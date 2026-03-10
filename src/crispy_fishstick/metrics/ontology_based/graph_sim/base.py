@@ -1,21 +1,21 @@
 """
 Graph Similarity Metric Base Class
 """
-from crispy_fishstick.metrics.ontology_based.base import OntologyBasedMetrics
-from crispy_fishstick.metrics.ontology_based.graph_sim.utils import (
+from scTimeBench.metrics.ontology_based.base import OntologyBasedMetrics
+from scTimeBench.metrics.ontology_based.graph_sim.utils import (
     floyd_warshall,
     modified_floyd_warshall,
 )
-from crispy_fishstick.shared.constants import RequiredOutputFiles
-from crispy_fishstick.shared.helpers import parse_cell_lineage
-from crispy_fishstick.shared.dataset.filters.lineage import LineageDatasetFilter
-from crispy_fishstick.shared.dataset.base import BaseDataset
-from crispy_fishstick.shared.dataset.filters.pseudotime_filter import (
+from scTimeBench.shared.constants import RequiredOutputFiles
+from scTimeBench.shared.helpers import parse_cell_lineage
+from scTimeBench.shared.dataset.filters.lineage import LineageDatasetFilter
+from scTimeBench.shared.dataset.base import BaseDataset
+from scTimeBench.shared.dataset.filters.pseudotime_filter import (
     BasePseudotimeFilter,
 )
 from enum import Enum
 from sklearn.metrics import roc_curve, precision_recall_curve
-from crispy_fishstick.trajectory_infer.base import TrajectoryInferenceMethodFactory
+from scTimeBench.trajectory_infer.base import TrajectoryInferenceMethodFactory
 import numpy as np
 import logging
 import os

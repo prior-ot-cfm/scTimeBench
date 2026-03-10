@@ -3,23 +3,23 @@ main.py. Entrypoint for measuring trajectories in single-cell data,
 particularly involving gene regulatory networks and cell lineage information.
 """
 
-from crispy_fishstick.config import Config
+from scTimeBench.config import Config
 
 # required to register metrics
-import crispy_fishstick.metrics
-import crispy_fishstick.shared.dataset
+import scTimeBench.metrics
+import scTimeBench.shared.dataset
 
 if False:
-    crispy_fishstick.metrics  # to avoid unused import warning
-    crispy_fishstick.shared.dataset  # to avoid unused import warning
+    scTimeBench.metrics  # to avoid unused import warning
+    scTimeBench.shared.dataset  # to avoid unused import warning
 
-from crispy_fishstick.metrics.base import METRIC_REGISTRY, BaseMetric
-from crispy_fishstick.metrics.model_manager import ModelManager
-from crispy_fishstick.shared.dataset.base import DATASET_REGISTRY
+from scTimeBench.metrics.base import METRIC_REGISTRY, BaseMetric
+from scTimeBench.metrics.model_manager import ModelManager
+from scTimeBench.shared.dataset.base import DATASET_REGISTRY
 
 from pprint import pprint
 
-import crispy_fishstick.database as database
+import scTimeBench.database as database
 
 
 def print_available(config: Config):
@@ -124,7 +124,7 @@ def view_evals_by_metric(config: Config):
 
 def main():
     """
-    Main entrypoint for the crispy-fishstick package.
+    Main entrypoint for the scTimeBench (crispy-fishstick) package.
     """
     config = Config()
 

@@ -1,10 +1,10 @@
-from crispy_fishstick.metrics.ontology_based.graph_sim.base import (
+from scTimeBench.metrics.ontology_based.graph_sim.base import (
     GraphSimMetric,
     AdjacencyMatrixType,
     ThresholdCriteria,
 )
-from crispy_fishstick.shared.utils import load_test_dataset
-from crispy_fishstick.shared.constants import ObservationColumns
+from scTimeBench.shared.utils import load_test_dataset
+from scTimeBench.shared.constants import ObservationColumns
 import os
 import logging
 

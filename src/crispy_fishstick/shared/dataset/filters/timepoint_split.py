@@ -2,8 +2,8 @@
 Split anndata object into training and test sets based on timepoints.
 """
 
-from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
-from crispy_fishstick.shared.constants import ObservationColumns
+from scTimeBench.shared.dataset.base import BaseDatasetFilter
+from scTimeBench.shared.constants import ObservationColumns
 
 
 class TimeSplitDatasetFilter(BaseDatasetFilter):

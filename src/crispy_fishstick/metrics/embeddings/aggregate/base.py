@@ -1,8 +1,8 @@
 """
 Embedding-based metrics.
 """
-from crispy_fishstick.metrics.embeddings.base import EmbeddingMetrics
-from crispy_fishstick.shared.constants import RequiredOutputFiles
+from scTimeBench.metrics.embeddings.base import EmbeddingMetrics
+from scTimeBench.shared.constants import RequiredOutputFiles
 
 
 class AggregateEmbeddingMetrics(EmbeddingMetrics):

@@ -5,20 +5,20 @@ depend on the dataset that they belong to.
 
 from typing import final
 
-from crispy_fishstick.config import Config, RunType
-from crispy_fishstick.metrics.model_manager import ModelManager
-from crispy_fishstick.shared.dataset.base import (
+from scTimeBench.config import Config, RunType
+from scTimeBench.metrics.model_manager import ModelManager
+from scTimeBench.shared.dataset.base import (
     BaseDataset,
     DATASET_REGISTRY,
     DATASET_FILTER_REGISTRY,
 )
-from crispy_fishstick.shared.constants import (
+from scTimeBench.shared.constants import (
     RequiredOutputFiles,
     PICKLED_DATASET_FILENAME,
     MODEL_CONFIG_FILENAME,
 )
-from crispy_fishstick.shared.utils import load_test_dataset
-from crispy_fishstick.database import DatabaseManager
+from scTimeBench.shared.utils import load_test_dataset
+from scTimeBench.database import DatabaseManager
 
 import os
 import pickle
@@ -195,7 +195,7 @@ class BaseMetric:
                 self.config.run_type == RunType.AUTO_TRAIN_TEST
                 or self.config.run_type == RunType.TRAIN_ONLY
             ):
-                # ** Note: we always rerun if some list is not complete this because of issue: https://github.com/ehuan2/crispy-fishstick/issues/53 **
+                # ** Note: we always rerun if some list is not complete this because of issue: https://github.com/ehuan2/scTimeBench/issues/53 **
                 # ** This will not necessarily re-run the model, and the only time that is not saved is the activation of the venv **
                 # ** But this should be okay because that time is negligible, and this ensures that **
                 # ** The model outputs give what are expected. The model outputs should still be cached however. **
