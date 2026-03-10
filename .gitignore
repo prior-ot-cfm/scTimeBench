@@ -1,3 +1,7 @@
+# Artifacts
+*.svg
+*.png
+
 # Virtual environment directory
 venv/
 venv

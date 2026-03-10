@@ -392,4 +392,22 @@ class PseudotimeFilter(BasePseudotimeFilter):
         # 4. Calculate Diffusion Pseudotime
         sc.tl.dpt(preprocessed_ann_data)
         logging.debug(f'Pseudotime: {preprocessed_ann_data.obs["dpt_pseudotime"]}')
+
+        # sc.tl.draw_graph(preprocessed_ann_data)
+
+        # # 6. Plot and Save
+        # # Note: Added 'show=False' to allow manual saving
+        # ax = sc.pl.draw_graph(
+        #     preprocessed_ann_data,
+        #     color=["dpt_pseudotime"],
+        #     legend_loc="on data",
+        #     show=False
+        # )
+
+        # # ax is often an array of Axes if you pass multiple colors
+        # # To save the figure specifically:
+        # import matplotlib.pyplot as plt
+        # plt.savefig("pseudotime_visualization.png")
+
+        # raise ValueError(f'Debugging...')
         return preprocessed_ann_data.obs["dpt_pseudotime"]

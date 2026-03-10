@@ -26,6 +26,12 @@ class Cooccurrence(BaseModel):
         """
         print(f"No such training exists for cooccurrence :)")
 
+        # let's print out the number of cells that exist!
+        print(
+            f"Number of cells in the dataset: {ann_data.shape[0]}, with cell types: {ann_data.obs[ObservationColumns.CELL_TYPE.value].unique().tolist()}\n"
+            f"Number of tps: {len(ann_data.obs[ObservationColumns.TIMEPOINT.value].unique().tolist())}, number of genes: {ann_data.shape[1]}\n"
+        )
+
     def generate_pred_graph(self, test_ann_data) -> np.ndarray:
         """
         Here we create the predicted graph by doing a simple cooccurrence-based approach.

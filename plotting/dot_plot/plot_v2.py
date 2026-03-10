@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.markers as mmarkers
 import matplotlib.colors as mcolors
+import numpy as np
 
-df = pd.read_csv("data.csv")
+df = pd.read_csv("data_v2.csv")
 
 # 1. Filter Data
 metrics_to_plot = ["JaccardSimilarity", "AUC_PRC", "AUC_ROC"]
@@ -26,9 +27,8 @@ plot_df["x_axis_group"] = (
 )
 group_order = list(dict.fromkeys(plot_df["x_axis_group"]))
 
-# 2. Setup global method order and a unified custom palette
+# 2. Setup global method order and custom palette
 all_methods = list(plot_df["method"].unique())
-
 custom_palette = {}
 set2_colors = sns.color_palette("Set2", len(all_methods))
 color_idx = 0
@@ -42,9 +42,30 @@ for m in all_methods:
         custom_palette[m] = set2_colors[color_idx]
         color_idx += 1
 
-# 3. Setup the Grid
+# ==========================================
+# THE FIX: INVISIBLE DUMMY POINTS
+# ==========================================
+# We add one point for every method at y = -1000.
+# This guarantees Seaborn never encounters an "empty group" and avoids the crash.
+dummy_rows = []
+template_row = plot_df.iloc[
+    0
+].copy()  # Use a real row as a template to keep all columns intact
+
+for step in plot_df["step_setting"].unique():
+    for m in all_methods:
+        new_row = template_row.copy()
+        new_row["step_setting"] = step
+        new_row["method"] = m
+        new_row["result"] = -1000  # Will be hidden below the plot boundary
+        dummy_rows.append(new_row)
+
+plot_df_padded = pd.concat([plot_df, pd.DataFrame(dummy_rows)], ignore_index=True)
+
+
+# 3. Setup the Grid (Using our padded dataframe)
 g = sns.FacetGrid(
-    plot_df,
+    plot_df_padded,
     row="step_setting",
     height=4,
     aspect=1.8,
@@ -56,19 +77,28 @@ g = sns.FacetGrid(
 def single_swarm_modified(data, **kwargs):
     ax = plt.gca()
 
-    # 1. Let Seaborn plot normally with default colors to handle the swarm math without crashing
+    # Because of the dummy points, we can safely use hue and palette without crashing!
     sns.swarmplot(
         data=data,
         x="x_axis_group",
         y="result",
-        hue="method",
+        # hue="method",
+        # hue_order=all_methods,
         order=group_order,
+        # palette=custom_palette,
         size=4.5,
         dodge=False,
         ax=ax,
     )
 
-    # Pre-calculate the custom marker paths
+    corr_rgb = mcolors.to_rgb("#E63946")
+    rand_rgb = mcolors.to_rgb("#457B9D")
+
+    path_circle = (
+        mmarkers.MarkerStyle("o")
+        .get_path()
+        .transformed(mmarkers.MarkerStyle("o").get_transform())
+    )
     path_diamond = (
         mmarkers.MarkerStyle("D")
         .get_path()
@@ -80,34 +110,44 @@ def single_swarm_modified(data, **kwargs):
         .transformed(mmarkers.MarkerStyle("X").get_transform())
     )
 
-    # 2. Seaborn creates exactly one collection per method present in THIS specific grid pane.
-    # They are created in the exact order of data["method"].unique().
-    local_methods = data["method"].unique()
+    # Safely iterate and swap shapes based on exact assigned colors
+    for collection in ax.collections:
+        if not hasattr(collection, "get_facecolors"):
+            continue
 
-    # 3. Manually map the shapes, colors, and borders directly to the Matplotlib objects
-    for collection, method in zip(ax.collections, local_methods):
-        if method == "Correlation":
-            collection.set_paths([path_diamond])
-            collection.set_facecolors([mcolors.to_rgba("#E63946")])  # Red
-            collection.set_edgecolors([(0, 0, 0, 1)])  # Black outline
-            collection.set_linewidths([0.8])
-            collection.set_sizes([40])
+        facecolors = collection.get_facecolors()
+        if len(facecolors) == 0:
+            continue
 
-        elif method == "Random":
-            collection.set_paths([path_x])
-            collection.set_facecolors([mcolors.to_rgba("#457B9D")])  # Blue
-            collection.set_edgecolors([(0, 0, 0, 1)])
-            collection.set_linewidths([0.8])
-            collection.set_sizes([45])
+        new_paths, sizes, edgecolors, linewidths = [], [], [], []
+        orig_sizes = collection.get_sizes()
+        default_size = (
+            orig_sizes[0] if len(orig_sizes) > 0 else 20.25
+        )  # Fallback to default area
 
-        else:
-            # For standard methods, apply our consistent custom_palette colors
-            if method in custom_palette:
-                collection.set_facecolors([mcolors.to_rgba(custom_palette[method])])
-            collection.set_edgecolors(["none"])
-            collection.set_linewidths([0])
+        for fc in facecolors:
+            rgb = fc[:3]
+            if np.allclose(rgb, corr_rgb, atol=0.05):
+                new_paths.append(path_diamond)
+                sizes.append(40)
+                edgecolors.append((0, 0, 0, 1))
+                linewidths.append(0.8)
+            elif np.allclose(rgb, rand_rgb, atol=0.05):
+                new_paths.append(path_x)
+                sizes.append(45)
+                edgecolors.append((0, 0, 0, 1))
+                linewidths.append(0.8)
+            else:
+                new_paths.append(path_circle)
+                sizes.append(default_size)
+                edgecolors.append(fc)
+                linewidths.append(0)
 
-    # Clean up the automatic legend generated by the raw swarmplot
+        collection.set_paths(new_paths)
+        collection.set_sizes(sizes)
+        collection.set_edgecolors(edgecolors)
+        collection.set_linewidths(linewidths)
+
     if ax.get_legend():
         ax.get_legend().remove()
 
@@ -115,7 +155,8 @@ def single_swarm_modified(data, **kwargs):
 # Map the function
 g.map_dataframe(single_swarm_modified)
 
-# 5. Final Polish (Restored your exact formatting)
+# 5. Final Polish
+# *** The (0, 1.05) limit perfectly hides our -1000 dummy points ***
 g.set(ylim=(0, 1.05))
 g.set_axis_labels("", "Score (0.0 - 1.0)")
 
@@ -123,7 +164,6 @@ for ax in g.axes.flat:
     ax.set_xticks(range(len(group_order)))
     ax.set_xticklabels(group_order, rotation=90, ha="center", fontsize=7)
 
-    # Visual separation between Dataset blocks
     for i in range(len(group_order)):
         if (i + 1) % len(metrics_to_plot) == 0:
             ax.axvline(i + 0.5, color="black", linestyle="-", alpha=0.1, linewidth=1)
