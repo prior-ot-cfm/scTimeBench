@@ -1,6 +1,6 @@
 """
 Note: for this file only, this will be used by other models as a base class
-And so its context is outside the src/ folder, so we need to use crispy_fishstick.*
+And so its context is outside the src/ folder, so we need to use scTimeBench.*
 imports instead of relative imports.
 """
 
@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
-from crispy_fishstick.shared.constants import RequiredOutputFiles
-from crispy_fishstick.shared.constants import ObservationColumns
+from scTimeBench.shared.constants import RequiredOutputFiles
+from scTimeBench.shared.constants import ObservationColumns
 
 
 def get_parser():

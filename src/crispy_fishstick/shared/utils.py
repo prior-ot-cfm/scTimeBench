@@ -9,7 +9,7 @@ import scanpy as sc
 import logging
 import yaml
 
-from crispy_fishstick.shared.constants import (
+from scTimeBench.shared.constants import (
     RequiredOutputFiles,
     MODEL_CONFIG_FILENAME,
 )

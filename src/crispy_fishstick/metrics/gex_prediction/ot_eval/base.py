@@ -1,9 +1,9 @@
 """
 OT-based gene expression prediction metric base class.
 """
-from crispy_fishstick.metrics.gex_prediction.base import GexPredictionMetrics
-from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputFiles
-from crispy_fishstick.shared.utils import load_output_file
+from scTimeBench.metrics.gex_prediction.base import GexPredictionMetrics
+from scTimeBench.shared.constants import ObservationColumns, RequiredOutputFiles
+from scTimeBench.shared.utils import load_output_file
 
 import numpy as np
 import scanpy as sc

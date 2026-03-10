@@ -3,8 +3,8 @@ Filter that replaces the time column with rounded values
 to ensure that there are enough cells per timepoint.
 """
 
-from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
-from crispy_fishstick.shared.constants import ObservationColumns
+from scTimeBench.shared.dataset.base import BaseDatasetFilter
+from scTimeBench.shared.constants import ObservationColumns
 import logging
 
 

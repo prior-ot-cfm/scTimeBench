@@ -6,8 +6,8 @@ and its timepoints, we want to infer the trajectory structure.
 
 Examples are the kNN graph-based methods, or the optimal transport based methods.
 """
-from crispy_fishstick.shared.constants import ObservationColumns, RequiredOutputFiles
-from crispy_fishstick.shared.utils import (
+from scTimeBench.shared.constants import ObservationColumns, RequiredOutputFiles
+from scTimeBench.shared.utils import (
     load_test_dataset,
     load_output_file,
     get_dataset,

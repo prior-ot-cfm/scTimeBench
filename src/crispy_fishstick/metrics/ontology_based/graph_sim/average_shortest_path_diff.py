@@ -1,9 +1,9 @@
-from crispy_fishstick.metrics.ontology_based.graph_sim.base import (
+from scTimeBench.metrics.ontology_based.graph_sim.base import (
     GraphSimMetric,
     AdjacencyMatrixType,
 )
-from crispy_fishstick.metrics.ontology_based.graph_sim.utils import floyd_warshall
-from crispy_fishstick.metrics.base import skip_metric
+from scTimeBench.metrics.ontology_based.graph_sim.utils import floyd_warshall
+from scTimeBench.metrics.base import skip_metric
 
 import numpy as np
 import logging

@@ -2,8 +2,8 @@
 Filter that replaces the time column with a psupertime.
 """
 
-from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
-from crispy_fishstick.shared.constants import ObservationColumns
+from scTimeBench.shared.dataset.base import BaseDatasetFilter
+from scTimeBench.shared.constants import ObservationColumns
 import scanpy as sc
 from sklearn.decomposition import PCA
 import logging

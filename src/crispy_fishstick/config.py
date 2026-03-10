@@ -176,7 +176,7 @@ class Config:
 
         # Set defaults for optional parameters
         defaults = {
-            "database_path": "crispy_fishstick.db",
+            "database_path": "scTimeBench.db",
             "run_type": RunType.PREPROCESS.value,
             "model_features_path": "model_utils/features.yaml",
             "output_dir": "outputs/",

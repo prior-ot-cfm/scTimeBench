@@ -1,7 +1,7 @@
 """
 kNN implementation for trajectory inference.
 """
-from crispy_fishstick.trajectory_infer.base import BaseTrajectoryInferMethod
+from scTimeBench.trajectory_infer.base import BaseTrajectoryInferMethod
 import numpy as np
 import logging
 import torch

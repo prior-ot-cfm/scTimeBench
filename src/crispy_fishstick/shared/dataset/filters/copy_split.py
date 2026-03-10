@@ -1,4 +1,4 @@
-from crispy_fishstick.shared.dataset.base import BaseDatasetFilter
+from scTimeBench.shared.dataset.base import BaseDatasetFilter
 
 
 class CopySplitFilter(BaseDatasetFilter):

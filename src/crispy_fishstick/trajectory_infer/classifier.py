@@ -1,11 +1,11 @@
 """
 Classifier implementation for trajectory inference.
 """
-from crispy_fishstick.trajectory_infer.base import (
+from scTimeBench.trajectory_infer.base import (
     BaseTrajectoryInferMethod,
 )
-from crispy_fishstick.shared.constants import ObservationColumns
-from crispy_fishstick.shared.utils import is_log_normalized_to_counts
+from scTimeBench.shared.constants import ObservationColumns
+from scTimeBench.shared.utils import is_log_normalized_to_counts
 from enum import Enum
 import logging
 

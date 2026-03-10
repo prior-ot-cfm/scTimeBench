@@ -2,7 +2,7 @@
 Suo et al. (2022) dataset.
 """
 
-from crispy_fishstick.shared.dataset.base import BaseDataset
+from scTimeBench.shared.dataset.base import BaseDataset
 
 
 class DummyDataset(BaseDataset):

@@ -2,7 +2,7 @@
 Base filter for datasets. Every metric will likely require different splits of the
 data, so this base class will define the necessary interface for dataset preprocessing.
 """
-from crispy_fishstick.shared.constants import ObservationColumns, DATASET_DIR
+from scTimeBench.shared.constants import ObservationColumns, DATASET_DIR
 import json
 import hashlib
 import os

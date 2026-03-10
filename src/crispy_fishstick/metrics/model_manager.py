@@ -5,7 +5,7 @@ import json
 import hashlib
 import subprocess
 import logging
-from crispy_fishstick.shared.dataset.base import BaseDataset
+from scTimeBench.shared.dataset.base import BaseDataset
 
 
 class ModelManager:

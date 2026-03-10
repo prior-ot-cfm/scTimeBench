@@ -1,7 +1,7 @@
 """
 kNN implementation for trajectory inference.
 """
-from crispy_fishstick.trajectory_infer.base import (
+from scTimeBench.trajectory_infer.base import (
     BaseTrajectoryInferMethod,
 )
 from sklearn.neighbors import NearestNeighbors
