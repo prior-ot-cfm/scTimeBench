@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 # Load data
-df = pd.read_csv("data_v2.csv")
+df = pd.read_csv("data_v3.csv")
 
 # 1. Filter Data
 metrics_to_plot = ["JaccardSimilarity", "AUC_PRC", "AUC_ROC"]
@@ -28,7 +28,8 @@ group_order = list(dict.fromkeys(plot_df["x_axis_group"]))
 
 # 2. Setup the Unified Palette and Explicit Order
 unique_methods = plot_df["method"].unique()
-special_methods = ["Correlation", "Random"]
+# special_methods = ["Correlation", "Random"]
+special_methods = ["Correlation"]
 other_methods = [m for m in unique_methods if m not in special_methods]
 
 # Force Correlation and Random to the front of the list
@@ -44,8 +45,6 @@ color_index = 0
 for method in ordered_methods:
     if method == "Correlation":
         custom_palette[method] = "#E63946"
-    elif method == "Random":
-        custom_palette[method] = "#457B9D"
     else:
         custom_palette[method] = set2_colors[color_index]
         color_index += 1
