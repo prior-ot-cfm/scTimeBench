@@ -1,6 +1,7 @@
 # Artifacts
 *.svg
 *.png
+csv_results/
 
 # Virtual environment directory
 venv/
