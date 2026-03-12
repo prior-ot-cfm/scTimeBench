@@ -145,3 +145,80 @@ def is_log_normalized_to_counts(ann_data, counts=10_000):
     return not is_raw(ann_data) and np.allclose(
         np.sum(np.expm1(ann_data.X), axis=1), counts
     )
+
+
+# Easter egg: Crispy Fishstick was our old name, and we want to pay homage to it
+# with the following animation
+import time
+import os
+import sys
+import signal
+
+
+def cheeky_message(sig, frame):
+    sys.stdout.write("\n\r  \033[91mNO ESCAPE. ENJOY THE FISHSTICK.\033[0m  ")
+    sys.stdout.flush()
+
+
+def block_interrupts():
+    signal.signal(signal.SIGINT, cheeky_message)
+
+
+def restore_interrupts():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
+# --- THE ART ---
+fishstick_art = [
+    r"      .   ____   .        ",
+    r"       \ /    \ /       / ",
+    r"     _  |(o) (o)|  _   [ The ultimate sc-timebench mascot, the Crispy Fishstick! ]",
+    r"    ( ) |   ^  | ( )   \_________________________________________________________/",
+    r"     ¯  |  ~~  |  ¯                        ",
+    r"       / \____/ \                         ",
+    r"      '          '                        ",
+    r"     CRISPY FISHSTICK                      ",
+]
+
+
+def animate():
+    block_interrupts()
+
+    try:
+        cols, rows = os.get_terminal_size()
+    except OSError:
+        cols, rows = (80, 24)
+
+    art_width = max(len(line) for line in fishstick_art)
+    speed = 0.02
+
+    # Move Right to Left
+    # We add art_width to the range so it starts fully off-screen right
+    for i in range(cols, -art_width, -1):
+        # Move cursor to Home
+        output = ["\033[H"]
+        # Add top padding
+        output.append("\n" * (rows // 3))
+
+        for line in fishstick_art:
+            if i >= 0:
+                # Leading spaces + the art
+                full_line = (" " * i) + line
+            else:
+                # Sliced art for when it's exiting left
+                full_line = line[abs(i) :]
+
+            # THE FIX: Pad the end of the line with spaces to clear old ']' and '/'
+            # Then truncate to 'cols' to prevent wrapping
+            cleaned_line = full_line.ljust(cols)[:cols]
+            output.append(cleaned_line)
+
+        sys.stdout.write("\n".join(output))
+        sys.stdout.flush()
+        time.sleep(speed)
+
+    # Clean clear-up and release the user
+    sys.stdout.write("\033[H\033[J")
+    sys.stdout.flush()
+    print("\n   [ SC-TIMEBENCH RESUMING... ]\n")
+    restore_interrupts()
