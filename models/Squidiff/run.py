@@ -15,6 +15,16 @@ from crispy_fishstick.model_utils.model_runner import main, BaseModel
 from crispy_fishstick.shared.constants import ObservationColumns
 
 
+def _single_device() -> torch.device:
+    if torch.cuda.is_available():
+        try:
+            torch.cuda.set_device(0)
+        except Exception:
+            pass
+        return torch.device("cuda:0")
+    return torch.device("cpu")
+
+
 def _sorted_unique(values: List) -> List:
     values = np.asarray(values)
     if np.issubdtype(values.dtype, np.number):
@@ -131,7 +141,9 @@ def _build_args(metadata: Dict, data_path: str, output_path: str, n_genes: int) 
 
 
 def _run_training(args: Dict) -> None:
-    from Squidiff import dist_util, logger  # type: ignore
+    from Squidiff import logger  # type: ignore
+
+    # from Squidiff import dist_util, logger
     from Squidiff.scrna_datasets import prepared_data  # type: ignore
     from Squidiff.resample import create_named_schedule_sampler  # type: ignore
     from Squidiff.script_util import (  # type: ignore
@@ -141,13 +153,15 @@ def _run_training(args: Dict) -> None:
     )
     from Squidiff.train_util import TrainLoop, plot_loss  # type: ignore
 
-    dist_util.setup_dist()
+    device = _single_device()
+    # dist_util.setup_dist()
     logger.configure(dir=args["logger_path"])
 
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    model.to(dist_util.dev())
+    model.to(device)
+    # model.to(dist_util.dev())
 
     schedule_sampler = create_named_schedule_sampler(
         args["schedule_sampler"], diffusion
@@ -197,7 +211,7 @@ def _run_training(args: Dict) -> None:
 
 
 def _load_model(args: Dict, model_path: str):
-    from Squidiff import dist_util  # type: ignore
+    # from Squidiff import dist_util
     from Squidiff.script_util import (  # type: ignore
         create_model_and_diffusion,
         args_to_dict,
@@ -216,30 +230,36 @@ def _load_model(args: Dict, model_path: str):
                 return state["model"]
         return state
 
-    world_size = int(os.environ.get("WORLD_SIZE", "1"))
-    use_dist = world_size > 1
+    # world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    # use_dist = world_size > 1
 
-    if use_dist:
-        dist_util.setup_dist()
+    # if use_dist:
+    #     dist_util.setup_dist()
 
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
 
-    if use_dist:
-        try:
-            state_dict = dist_util.load_state_dict(model_path, map_location="cpu")
-        except RuntimeError as exc:
-            if "No backend type associated with device type cpu" in str(exc):
-                state_dict = _safe_load_state_dict(model_path)
-            else:
-                raise
-    else:
-        state_dict = _safe_load_state_dict(model_path)
+    # if use_dist:
+    #     try:
+    #         state_dict = dist_util.load_state_dict(model_path, map_location="cpu")
+    #     except RuntimeError as exc:
+    #         if "No backend type associated with device type cpu" in str(exc):
+    #             state_dict = _safe_load_state_dict(model_path)
+    #         else:
+    #             raise
+    # else:
+    #     state_dict = _safe_load_state_dict(model_path)
+    state_dict = _safe_load_state_dict(model_path)
     model.load_state_dict(state_dict)
-    model.to(dist_util.dev())
+    device = _single_device()
+    model.to(device)
     model.eval()
-    return model, diffusion, dist_util.dev()
+    return model, diffusion, device
+
+    # model.to(dist_util.dev())
+    # model.eval()
+    # return model, diffusion, dist_util.dev()
 
 
 def _encode_latent(
