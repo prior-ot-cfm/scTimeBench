@@ -17,6 +17,7 @@ import numpy as np
 import torch
 import scanpy as sc
 import random
+import scipy.sparse as sp
 from tqdm import tqdm
 from optim.running import constructscNODEModel, scNODETrainWithPreTrain
 
@@ -36,10 +37,20 @@ def prepare_data(ann_data):
     # Convert to torch project
     # so right now, we have it s.t. if the time points do match up, we get the data
     # np.where returns a tuple, the array we care about is the first element
+
+    # Added sparse matrix check to accomodate instances where anndata.X is already a numpy array
     traj_data = [
-        torch.FloatTensor(data[np.where(cell_tps == t)[0], :].toarray())
+        torch.FloatTensor(
+            data[np.where(cell_tps == t)[0], :].toarray()
+            if sp.issparse(data)
+            else data[np.where(cell_tps == t)[0], :]
+        )
         for t in unique_tps
     ]
+    # traj_data = [
+    #    torch.FloatTensor(data[np.where(cell_tps == t)[0], :].toarray())
+    #    for t in unique_tps
+    # ]
 
     tps = torch.FloatTensor(unique_tps)
     n_cells = [each.shape[0] for each in traj_data]
@@ -140,7 +151,10 @@ class scNODE(BaseModel):
         """
         self.latent_ode_model.eval()
 
-        data = test_ann_data.X.toarray()
+        if sp.issparse(test_ann_data.X):
+            data = test_ann_data.X.toarray()
+        else:
+            data = test_ann_data.X
         embeds, _ = self.latent_ode_model.vaeReconstruct([data])
         embeds = embeds[0]
 
@@ -153,7 +167,10 @@ class scNODE(BaseModel):
         """
         self.latent_ode_model.eval()
 
-        data = test_ann_data.X.toarray()
+        if sp.issparse(test_ann_data.X):
+            data = test_ann_data.X.toarray()
+        else:
+            data = test_ann_data.X
         cell_tps = test_ann_data.obs[ObservationColumns.TIMEPOINT.value].to_numpy()
         unique_tps = sorted(np.unique(cell_tps))
 
@@ -186,7 +203,10 @@ class scNODE(BaseModel):
         """
         self.latent_ode_model.eval()
 
-        data = test_ann_data.X.toarray()
+        if sp.issparse(test_ann_data.X):
+            data = test_ann_data.X.toarray()
+        else:
+            data = test_ann_data.X
         cell_tps = test_ann_data.obs[ObservationColumns.TIMEPOINT.value].to_numpy()
         unique_tps = sorted(np.unique(cell_tps))
 
