@@ -2,7 +2,7 @@
 ARTEMIS runner script.
 
 This script trains and evaluates ARTEMIS on an AnnData dataset.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import jax
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns, RequiredOutputColumns
 
 
@@ -196,7 +196,7 @@ def _nan_inf_stats(name: str, values: np.ndarray) -> None:
     print(msg)
 
 
-class Artemis(BaseModel):
+class Artemis(BaseMethod):
     def _build_dataset(
         self, ann_data, time_mapping: Dict, metadata: Dict
     ) -> Input_Dataset:

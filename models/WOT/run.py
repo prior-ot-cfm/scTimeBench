@@ -2,7 +2,7 @@
 Waddington-OT (WOT) runner script.
 
 This script trains and evaluates Waddington-OT on an AnnData dataset.
-It follows the BaseModel runner structure used across the project.
+It follows the BaseMethod runner structure used across the project.
 """
 
 import os

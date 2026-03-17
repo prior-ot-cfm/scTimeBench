@@ -2,7 +2,7 @@
 scIMF runner script.
 
 This script trains and evaluates scIMF on an AnnData dataset.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 import os
@@ -16,7 +16,7 @@ import tqdm
 import geomloss
 from sklearn.decomposition import PCA
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 
 
@@ -82,7 +82,7 @@ def _select_generated(gen, gen_pos, n_cells, rng):
     raise ValueError(f"Unexpected generated shape: {gen.shape}")
 
 
-class scIMF(BaseModel):
+class scIMF(BaseMethod):
     def _build_config(self, metadata: Dict, all_tps: Optional[List] = None):
         args = config_builder()
 

@@ -2,7 +2,7 @@
 PI-SDE runner script.
 
 This script trains and evaluates PI-SDE on an AnnData dataset.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 import os
@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 
 
@@ -189,7 +189,7 @@ def _select_checkpoint(config):
     return os.path.join(train_dir, candidates[-1])
 
 
-class PISDE(BaseModel):
+class PISDE(BaseMethod):
     def train(self, ann_data, all_tps: Optional[List] = None):
         """
         Training logic for PI-SDE.

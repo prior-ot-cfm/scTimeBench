@@ -7,7 +7,7 @@ on the correlation of cell types at adjacent time points.
 import numpy as np
 from scipy.sparse import issparse
 from scipy.stats import rankdata
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import RequiredOutputFiles
 from scTimeBench.shared.constants import ObservationColumns
 from enum import Enum
@@ -25,7 +25,7 @@ class CorrelationMethod(Enum):
     SPEARMANR = "spearmanr"
 
 
-class Correlation(BaseModel):
+class Correlation(BaseMethod):
     def __init__(self, yaml_config):
         super().__init__(yaml_config)
 

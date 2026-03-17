@@ -5,12 +5,12 @@ on the cooccurrence of cell types at adjacent time points.
 """
 
 import numpy as np
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import RequiredOutputFiles
 from scTimeBench.shared.constants import ObservationColumns
 
 
-class Cooccurrence(BaseModel):
+class Cooccurrence(BaseMethod):
     def __init__(self, yaml_config):
         super().__init__(yaml_config)
 

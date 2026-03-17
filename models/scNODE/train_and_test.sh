@@ -27,7 +27,8 @@ echo "Processing content..."
 
 # 5. Let's get the venv ready
 echo "Activating scNODE virtual environment..."
-source ./models/scNODE/scNODE_module/.venv/bin/activate
+source ./venv/scNODE/bin/activate
+# TODO: install it otherwise under venv/scNODE using the requirements.txt file in the scNODE directory
 echo "Virtual environment activated."
 
 # 6. Now let's run train and test on model.py with the provided YAML file

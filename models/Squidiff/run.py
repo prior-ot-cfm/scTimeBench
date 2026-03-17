@@ -2,7 +2,7 @@
 Squidiff runner script.
 
 This script trains and evaluates Squidiff on an AnnData dataset.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 import os
@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import torch
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 
 
@@ -346,7 +346,7 @@ def _next_timepoint_mask(cell_tps: np.ndarray, unique_tps: List) -> np.ndarray:
     return np.array([next_map.get(tp) is not None for tp in cell_tps], dtype=bool)
 
 
-class Squidiff(BaseModel):
+class Squidiff(BaseMethod):
     def train(self, ann_data, all_tps: Optional[List] = None):
         """
         Training logic for Squidiff.

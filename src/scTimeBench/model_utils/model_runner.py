@@ -49,7 +49,7 @@ def process_yaml(yaml_path):
 
 
 # Class to be inherited by all models
-class BaseModel:
+class BaseMethod:
     def __init__(self, yaml_config):
         self.config = yaml_config
         self.output_path = yaml_config["output_path"]
@@ -185,7 +185,7 @@ class BaseModel:
         raise NotImplementedError("Subclasses should implement this method.")
 
 
-def main(model_class: BaseModel):
+def main(model_class: BaseMethod):
     print(f"Starting train and testing for model...")
     parser = get_parser()
     args = parser.parse_args()
@@ -194,7 +194,7 @@ def main(model_class: BaseModel):
     output_path = yaml_config["output_path"]
 
     # Initialize the model
-    model: BaseModel = model_class(yaml_config)
+    model: BaseMethod = model_class(yaml_config)
 
     # first let's check if the required outputs already exist -- and skip the whole process if so
     if all(
