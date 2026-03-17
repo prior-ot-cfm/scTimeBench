@@ -2,7 +2,7 @@
 PRESCIENT runner script.
 
 This script trains and evaluates PRESCIENT on an AnnData dataset
-using the BaseModel runner structure used across the project.
+using the BaseMethod runner structure used across the project.
 """
 
 import os
@@ -13,7 +13,7 @@ from typing import List, Optional
 import numpy as np
 import torch
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 
 
@@ -256,7 +256,7 @@ def _fill_from_next(sim_list: List[np.ndarray], tp_idx: np.ndarray) -> np.ndarra
     return out
 
 
-class PRESCIENT(BaseModel):
+class PRESCIENT(BaseMethod):
     def train(self, ann_data, all_tps: Optional[List] = None):
         """
         Training logic for PRESCIENT.

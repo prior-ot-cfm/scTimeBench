@@ -2,7 +2,7 @@
 Cell-MNN runner script.
 
 This script trains and evaluates Cell-MNN on an AnnData dataset.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 
 
@@ -124,7 +124,7 @@ def _resolve_device(metadata: Dict) -> torch.device:
     return device
 
 
-class CellMNNRunner(BaseModel):
+class CellMNNRunner(BaseMethod):
     def train(self, ann_data, all_tps=None):
         cache_path = os.path.join(
             self.config["output_path"], "trained_CellMNN_model.pth"

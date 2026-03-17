@@ -4,7 +4,7 @@ Moscot runner script.
 This script trains and evaluates Moscot (Multiomics Single-cell Optimal Transport)
 for trajectory inference on an AnnData dataset.
 It uses the TemporalProblem from moscot to compute optimal transport maps between time points.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 import os

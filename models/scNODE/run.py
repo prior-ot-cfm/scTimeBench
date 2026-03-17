@@ -11,7 +11,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "./scNODE_module"))
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 import numpy as np
 import torch
@@ -118,7 +118,7 @@ def model_training(
     )
 
 
-class scNODE(BaseModel):
+class scNODE(BaseMethod):
     def train(self, ann_data, all_tps=None):
         """
         Training logic for scNODE.

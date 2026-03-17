@@ -2,7 +2,7 @@
 MIOFlow runner script.
 
 This script trains and evaluates MIOFlow on an AnnData dataset.
-It keeps the BaseModel runner structure used across the project.
+It keeps the BaseMethod runner structure used across the project.
 """
 
 # let's add the model_utils path
@@ -16,7 +16,7 @@ import scipy.sparse as sp
 import torch
 from sklearn.decomposition import PCA
 
-from scTimeBench.model_utils.model_runner import main, BaseModel
+from scTimeBench.model_utils.model_runner import main, BaseMethod
 from scTimeBench.shared.constants import ObservationColumns
 
 from MIOFlow.utils import set_seeds, config_criterion
@@ -135,7 +135,7 @@ def model_training(
     return model
 
 
-class MIOFlow(BaseModel):
+class MIOFlow(BaseMethod):
     def train(self, ann_data, all_tps=None):
         """
         Training logic for MIOFlow.

@@ -1,4 +1,4 @@
-from scTimeBench.model_utils.model_runner import BaseModel
+from scTimeBench.model_utils.model_runner import BaseMethod
 from scTimeBench.shared.constants import RequiredOutputFiles
 from scTimeBench.shared.constants import ObservationColumns
 from scipy.sparse import issparse
@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 
 
-class BaseOTModel(BaseModel):
+class BaseOTModel(BaseMethod):
     """
     Base class for OT-based models.
     """
