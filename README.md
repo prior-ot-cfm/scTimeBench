@@ -9,7 +9,7 @@
 If the external dependencies such as pypsupertime or sceptic are not used (which they are not used by default), you can install using pip as follows:
 
 ```
-pip install -e ".\[benchmark]"
+pip install -e ".[benchmark]"
 ```
 
 to run the benchmark. For your own method, simply install without the extra benchmarking requirements with
