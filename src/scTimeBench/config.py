@@ -145,8 +145,27 @@ class Config:
             help="Usually duplicate model evaluations are skipped. This flag forces re-running even if evaluations already exist.",
         )
 
+        parser.add_argument(
+            "-cf",
+            "--crispy-fishstick",
+            action="store_true",
+            help=argparse.SUPPRESS,  # hide this from help since it's an Easter egg
+        )
+
         # Parse known arguments
         args = parser.parse_args()
+
+        # first handle the Easter egg
+        if args.crispy_fishstick:
+            from scTimeBench.shared.utils import animate, restore_interrupts
+            import sys
+
+            try:
+                animate()
+            finally:
+                restore_interrupts()
+                sys.stdout.write("\033[?25h")  # Re-show the cursor if you hid it
+            exit()
 
         # Get all config keys
         config_keys = list(args.__dict__.keys())
