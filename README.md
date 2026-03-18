@@ -21,9 +21,16 @@ pip install -e .
 There are extra dependencies that can be found under `pyproject.toml`.
 
 ## Setup: UV
+Due to external dependencies and a more complex setup, we have decided to package everything under `uv` (see: https://github.com/astral-sh/uv). To start with, you need to get all the necessary extern dependencies, which can be done either by running:
+```
+git submodule update --init extern/
+```
+or if you want to do it for the other methods as well,
+```
+git submodule update --init
+```
 
-Due to external dependencies and a more complex setup, we have decided to package everything under `uv` (see: https://github.com/astral-sh/uv). To start with, install `uv` then run the following:
-
+Then, install `uv` and run the following:
 ```
 uv sync
 ```
