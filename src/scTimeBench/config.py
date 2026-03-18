@@ -232,10 +232,10 @@ class Config:
                 )
 
         # validate the fields within each larger section
-        # N.B.: we don't need them to specify filters because it might already be preprocessed
+        # N.B.: we don't need them to specify preprocessors because it might already be preprocessed
         # ** DATASETS **
         dataset_required_fields = ["data_path", "name"]
-        dataset_optional_fields = ["filters"]
+        dataset_optional_fields = ["data_preprocessing_steps"]
         dataset_alternate_field = "tag"
 
         for dataset in self.datasets:
