@@ -7,8 +7,8 @@ datasets:
     # note: these preprocessors need to be in order!
     data_preprocessing_steps:
       - name: LineageDatasetFilter
-        cell_lineage_file: ./examples/cell_lineages/b_cells/b_cell_line.txt
-        cell_equivalence_file: ./examples/cell_lineages/b_cells/equal_names.txt
+        cell_lineage_file: ./cell_lineages/b_cells/b_cell_line.txt
+        cell_equivalence_file: ./cell_lineages/b_cells/equal_names.txt
       - name: LogNormPreprocessor
       - name: CopyTrainTest
 
@@ -18,8 +18,8 @@ datasets:
     # these preprocessors need to be in order!
     data_preprocessing_steps:
       - name: LineageDatasetFilter
-        cell_lineage_file: ./examples/cell_lineages/germ/cell_line.txt
-        cell_equivalence_file: ./examples/cell_lineages/germ/equal_names.txt
+        cell_lineage_file: ./cell_lineages/germ/cell_line.txt
+        cell_equivalence_file: ./cell_lineages/germ/equal_names.txt
       - name: RoundCellsToTimepoint
         min_cells_per_timepoint: 10
       - name: LogNormPreprocessor
@@ -31,7 +31,7 @@ datasets:
      # these preprocessors need to be in order!
     data_preprocessing_steps:
       - name: LineageDatasetFilter
-        cell_lineage_file: ./examples/cell_lineages/pancreas/trunk_lineage.txt
+        cell_lineage_file: ./cell_lineages/pancreas/trunk_lineage.txt
       - name: LogNormPreprocessor
       - name: CopyTrainTest
 
@@ -41,8 +41,8 @@ datasets:
     requires_caching: true
     data_preprocessing_steps:
       - name: LineageDatasetFilter
-        cell_lineage_file: ./examples/cell_lineages/germ/cell_line.txt
-        cell_equivalence_file: ./examples/cell_lineages/germ/equal_names.txt
+        cell_lineage_file: ./cell_lineages/germ/cell_line.txt
+        cell_equivalence_file: ./cell_lineages/germ/equal_names.txt
       - name: RoundCellsToTimepoint
         min_cells_per_timepoint: 10
       - name: Pseudotime
@@ -58,8 +58,8 @@ datasets:
     requires_caching: true
     data_preprocessing_steps:
       - name: LineageDatasetFilter
-        cell_lineage_file: ./examples/cell_lineages/b_cells/b_cell_line.txt
-        cell_equivalence_file: ./examples/cell_lineages/b_cells/equal_names.txt
+        cell_lineage_file: ./cell_lineages/b_cells/b_cell_line.txt
+        cell_equivalence_file: ./cell_lineages/b_cells/equal_names.txt
       - name: RoundCellsToTimepoint
         min_cells_per_timepoint: 10
       - name: Pseudotime
@@ -75,7 +75,7 @@ datasets:
     requires_caching: true
     data_preprocessing_steps:
       - name: LineageDatasetFilter
-        cell_lineage_file: ./examples/cell_lineages/pancreas/trunk_lineage.txt
+        cell_lineage_file: ./cell_lineages/pancreas/trunk_lineage.txt
       - name: Pseudotime
         preprocess_type: zheng_hvg
       - name: RoundCellsToTimepoint

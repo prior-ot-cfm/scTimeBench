@@ -105,7 +105,7 @@ class Config:
             "--run_type",
             type=str,
             choices=[rt.value for rt in RunType],
-            help="Type of run to perform: auto_train_test, preprocess, or eval_only. Defaults to preprocess.",
+            help="Type of run to perform: (default) auto_train_test, preprocess, eval_only, train_only. Defaults to auto_train_test.",
         )
 
         parser.add_argument(
@@ -190,7 +190,7 @@ class Config:
         # Set defaults for optional parameters
         defaults = {
             "database_path": "scTimeBench.db",
-            "run_type": RunType.PREPROCESS.value,
+            "run_type": RunType.AUTO_TRAIN_TEST.value,
             "output_dir": "outputs/",
             "datasets": [],
             "log_level": "INFO",
