@@ -74,6 +74,23 @@ class BaseMetric:
         # now we call the setups that need to be defined by subclasses
         self._setup_trajectory_inference_model()
         self._setup_supported_datasets()
+        # all methods should be using the same default and optional datasets
+        # and only potentially define different groups:
+        self.default_datasets_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "shared",
+            "dataset",
+            "default_datasets.yaml",
+        )
+        self.optional_datasets_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "shared",
+            "dataset",
+            "optional_datasets.yaml",
+        )
+
         self._setup_method_output_requirements()
 
         # finally we setup the datasets and metrics db
