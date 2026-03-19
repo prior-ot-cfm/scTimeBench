@@ -1,11 +1,9 @@
-Usage
-=====
+Installation & Setup
+====================
 
-Installation Setup
-------------------
 
-Setup
-~~~~~
+Install: pip
+~~~~~~~~~~~~
 
 If the external dependencies such as pypsupertime or sceptic are not used (which they are not used by default), you can install using pip as follows:
 
@@ -21,8 +19,8 @@ to run the benchmark. For your own method, simply install without the extra benc
 
 There are extra dependencies that can be found under `pyproject.toml`.
 
-Setup: UV
-~~~~~~~~~
+Install: UV
+~~~~~~~~~~~
 
 Due to external dependencies and a more complex setup, we have decided to package everything under `uv` (see: https://github.com/astral-sh/uv). To start with, install `uv` then run the following:
 

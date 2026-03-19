@@ -6,16 +6,36 @@
 scTimeBench Documentation
 =========================
 
-Welcome to the scTimeBench documentation! This project provides a comprehensive benchmarking suite for single cell time series methods. Here you will find detailed information on how to run the benchmark and how to extend it with new methods, metrics and datasets.
+.. raw:: html
 
-The preprint is available on bioRxiv: https://www.biorxiv.org/content/10.64898/2026.03.16.712069v1.
+   <p>
+      <a href="https://www.python.org/downloads/release/python-31012/">
+         <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square" alt="Python 3.10+" />
+      </a>
+      <a href="https://opensource.org/license/mit">
+         <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT License" />
+      </a>
+      <a href="https://www.biorxiv.org/content/10.64898/2026.03.16.712069v1">
+         <img src="https://img.shields.io/badge/bioRXiv-10.64898/2026.03.16.712069v1-red.svg?style=flat-square" alt="bioRxiv preprint" />
+      </a>
+      <a href="https://colab.research.google.com/drive/1J-yNXu_FcSnhrCwTDQKjWCBSHsmdbohJ?usp=sharing">
+         <img src="https://img.shields.io/badge/Google-Colab-orange?logo=googlecolab&style=flat-square" alt="Google Colab" />
+      </a>
+   </p>
 
-The codebase can be found on GitHub: https://www.github.com/li-lab-mcgill/scTimeBench.
+Welcome to the scTimeBench documentation! 
+
+This project provides a comprehensive benchmarking suite for single cell time series methods. You will find detailed information on how to run the benchmark and how to extend it with new methods, metrics and datasets.
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents
 
-   usage
+   setup
+   base_run
+   data_contrib
+   metric_contrib
+   method_contrib
    api
 
