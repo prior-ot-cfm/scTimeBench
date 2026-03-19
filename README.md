@@ -1,7 +1,13 @@
-<h1>
-	<img src="assets/logo.png" alt="VLM-Lens Logo" height="100" style="vertical-align: middle; margin-right: 20px;" />
-	<span style="vertical-align: middle;">scTimeBench</span>
-</h1>
+<table>
+	<tr>
+		<td valign="middle">
+			<img src="assets/logo.png" alt="VLM-Lens Logo" height="150" />
+		</td>
+		<td valign="middle">
+			<h1>scTimeBench</h1>
+		</td>
+	</tr>
+</table>
 
 [![python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/license/mit)
