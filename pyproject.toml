@@ -9,9 +9,10 @@ dependencies = [
     "PyYAML",
     "scanpy",
     "scikit_learn",
-    "fastparquet",
+    "fastparquet==2025.12.0",
     "pyarrow",
 ]
+requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["src"]  # Tells Python: "The actual code lives inside the src folder"
