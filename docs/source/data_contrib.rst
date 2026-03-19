@@ -1,0 +1,15 @@
+Dataset Contribution
+==================
+
+Overview
+--------
+
+This page will document how to add a new dataset to scTimeBench.
+
+Suggested topics
+----------------
+
+- Expected dataset format
+- Required metadata
+- Dataset registration
+- Validation and testing
