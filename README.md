@@ -1,12 +1,13 @@
-# <img src="assets/logo.png" alt="VLM-Lens Logo" height="100" style="vertical-align:middle; margin-right:20px;"/> scTimeBench
+<h1>
+	<img src="assets/logo.png" alt="VLM-Lens Logo" height="100" style="vertical-align: middle; margin-right: 20px;" />
+	<span style="vertical-align: middle;">scTimeBench</span>
+</h1>
 
 [![python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/license/mit)
 [![bioRXiv](https://img.shields.io/badge/bioRXiv-10.64898/2026.03.16.712069v1-red.svg?style=flat-square)](https://www.biorxiv.org/content/10.64898/2026.03.16.712069v1)
-
-<!-- TODO: -->
-<!-- [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)]() -->
 [![Google Colab](https://img.shields.io/badge/Google-Colab-orange?logo=googlecolab&style=flat-square)](https://colab.research.google.com/drive/1J-yNXu_FcSnhrCwTDQKjWCBSHsmdbohJ?usp=sharing)
+<!-- TODO: --> <!-- [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)]() -->
 
 
 ![scTimeBench Overview](./assets/scTimeBench.png)
@@ -110,7 +111,6 @@ If your change heavily modifies the architecture, please run the necessary tests
 	year = {2026},
 	doi = {10.64898/2026.03.16.712069},
 	publisher = {Cold Spring Harbor Laboratory},
-	abstract = {Temporal modelling of single-cell gene expression is essential for capturing dynamic cellular processes, yet a systematic framework for evaluating time-aware trajectory inference methods has not yet been established. Here, we present a modular and scalable benchmark designed to assess methods across three critical tasks: forecast accuracy (temporal cell alignment) for projecting cells to unseen time points, embedding coherence between original and projected data, and cell-type lineage fidelity. We evaluated nine state-of-the-art methods, which are broadly categorized into 7 forecasting-based and 2 optimal transport (OT)-based methods across eight diverse datasets spanning four species. Our results show that while several methods achieve high forecast accuracy, they often fail to preserve biological signals, both in their latent spaces and in cell lineage reconstruction. Notably, most methods confer low lineage fidelity and often underperform compared to a correlation baseline. We further demonstrate that integrating pseudotime can effectively denoise trajectories by aligning the data snapshots with the intrinsic biological clock in each cell. Finally, to streamline benchmarking for temporal single-cell analysis, we built one of the first self-contained Python packages for the research community: https://github.com/li-lab-mcgill/scTimeBench.Competing Interest StatementThe authors have declared no competing interest.Natural Sciences and Engineering Research Council, https://ror.org/01h531d29, RGPIN-2016-05174Canadian Institutes of Health Research, https://ror.org/01gavpb45, PJT-540722Canada Research Chairs, https://ror.org/0517h6h17, CRC-2021-00547},
 	URL = {https://www.biorxiv.org/content/early/2026/03/18/2026.03.16.712069},
 	eprint = {https://www.biorxiv.org/content/early/2026/03/18/2026.03.16.712069.full.pdf},
 	journal = {bioRxiv}
