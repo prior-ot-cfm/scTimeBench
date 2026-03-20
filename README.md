@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/license/mit)
 [![bioRXiv](https://img.shields.io/badge/bioRXiv-10.64898/2026.03.16.712069v1-red.svg?style=flat-square)](https://www.biorxiv.org/content/10.64898/2026.03.16.712069v1)
 [![Google Colab](https://img.shields.io/badge/Google-Colab-orange?logo=googlecolab&style=flat-square)](https://colab.research.google.com/drive/1J-yNXu_FcSnhrCwTDQKjWCBSHsmdbohJ?usp=sharing)
+[![Install](https://github.com/li-lab-mcgill/scTimeBench/actions/workflows/ci-install.yml/badge.svg)](https://github.com/li-lab-mcgill/scTimeBench/actions/workflows/ci-install.yml)
 <!-- TODO: --> <!-- [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)]() -->
 
 
