@@ -1,4 +1,4 @@
-name: Install Test
+name: Install
 
 on:
   push:
