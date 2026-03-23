@@ -1,5 +1,6 @@
+<!-- for this to work on Pypi, we need to point to the absolute path -->
 <h1>
-	<img src="assets/logo.png" alt="VLM-Lens Logo" height="150" align="absmiddle" /> scTimeBench
+	<img src="https://raw.githubusercontent.com/li-lab-mcgill/scTimeBench/refs/heads/main/assets/logo.png" alt="scTimeBench-Logo" height="150" align="absmiddle" /> scTimeBench
 </h1>
 
 [![python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
@@ -7,10 +8,11 @@
 [![bioRXiv](https://img.shields.io/badge/bioRXiv-10.64898/2026.03.16.712069v1-red.svg?style=flat-square)](https://www.biorxiv.org/content/10.64898/2026.03.16.712069v1)
 [![Google Colab](https://img.shields.io/badge/Google-Colab-orange?logo=googlecolab&style=flat-square)](https://colab.research.google.com/drive/1J-yNXu_FcSnhrCwTDQKjWCBSHsmdbohJ?usp=sharing)
 [![Install](https://github.com/li-lab-mcgill/scTimeBench/actions/workflows/ci-install.yml/badge.svg)](https://github.com/li-lab-mcgill/scTimeBench/actions/workflows/ci-install.yml)
+[![Pypi](https://img.shields.io/badge/pypi-0.1.0-orange?logo=pypi&style=flat-square)](https://pypi.org/project/scTimeBench/)
 <!-- TODO: --> <!-- [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)]() -->
 
 
-![scTimeBench Overview](./assets/scTimeBench.png)
+![scTimeBench Overview](http://raw.githubusercontent.com/li-lab-mcgill/scTimeBench/refs/heads/main/assets/scTimeBench.png)
 
 ## Table of Contents
 - [Environment Setup](#environment-setup)
@@ -51,16 +53,16 @@ uv sync
 ### Standard Pip
 If the external dependencies such as pypsupertime or sceptic are not used (which they are not used by default), you can install using pip as follows:
 ```
-pip install -e ".[benchmark]"
+pip install scTimeBench[benchmark]
 ```
 to run the benchmark. For your own method, simply install without the extra benchmarking requirements with
 ```
-pip install -e .
+pip install scTimeBench
 ```
 There are extra dependencies that can be found under `pyproject.toml`.
 
 ## Benchmark Architecture
-![Benchmark Architecture](./assets/architecture.png)
+![Benchmark Architecture](https://raw.githubusercontent.com/li-lab-mcgill/scTimeBench/refs/heads/main/assets/architecture.png)
 scTimeBench is controlled by a central configuration file which determines which datasets, methods, and metrics to run. An example of this can be found under `configs/scNODE/gex.yaml`.
 
 ### Detailed Layout of File Structure
@@ -86,7 +88,7 @@ If you want to contribute, please install the dev environments with:
 ```
 uv sync --extra dev --extra benchmark
 ```
-or
+or use pip in editable mode with:
 ```
 pip install -e ".[dev, benchmark]"
 ```
