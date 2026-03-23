@@ -1,7 +1,7 @@
 # Misc. artifacts
 csv_results/
-*.png
-*.svg
+#*.png
+#*.svg
 
 # Undo any assets image gitignores
 !/assets/*

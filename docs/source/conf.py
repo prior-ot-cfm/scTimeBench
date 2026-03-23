@@ -30,7 +30,7 @@ _metrics_stub.__package__ = "scTimeBench.metrics"
 _metrics_stub.__file__ = os.path.join(_metrics_pkg_path, "__init__.py")
 sys.modules.setdefault("scTimeBench.metrics", _metrics_stub)
 
-extensions = ["sphinx.ext.autodoc"]
+extensions = ["sphinx.ext.autodoc","sphinx.ext.githubpages"]
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
