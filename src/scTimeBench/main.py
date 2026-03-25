@@ -3,7 +3,7 @@ main.py. Entrypoint for measuring trajectories in single-cell data,
 particularly involving gene regulatory networks and cell lineage information.
 """
 
-from scTimeBench.config import Config
+from scTimeBench.config import Config, CsvExportType, CsvWriteMode
 
 # required to register metrics
 import scTimeBench.metrics
@@ -18,6 +18,8 @@ from scTimeBench.metrics.method_manager import MethodManager
 from scTimeBench.shared.dataset.base import DATASET_REGISTRY
 
 from pprint import pprint
+import os
+from pathlib import Path
 
 import scTimeBench.database as database
 
@@ -138,9 +140,30 @@ def main():
         db_manager.close()
         exit()
 
-    if config.graph_sim_to_csv:
+    if config.to_csv is not None:
+        os.makedirs(config.output_csv_path, exist_ok=True)
         db_manager = database.DatabaseManager(config)
-        db_manager.graph_sim_to_csv(config.output_csv_path)
+
+        db_stem = Path(config.database_path).stem
+        merge_mode = config.csv_write_mode == CsvWriteMode.MERGE
+
+        if merge_mode:
+            graph_sim_output = os.path.join(config.output_csv_path, "graph_sim.csv")
+            embedding_output = os.path.join(config.output_csv_path, "embedding.csv")
+        else:
+            graph_sim_output = os.path.join(
+                config.output_csv_path, f"{db_stem}_graph_sim.csv"
+            )
+            embedding_output = os.path.join(
+                config.output_csv_path, f"{db_stem}_embedding.csv"
+            )
+
+        if CsvExportType.GRAPH_SIM in config.to_csv:
+            db_manager.graph_sim_to_csv(graph_sim_output, append=merge_mode)
+
+        if CsvExportType.EMBEDDING in config.to_csv:
+            db_manager.embedding_to_csv(embedding_output, append=merge_mode)
+
         db_manager.close()
         exit()
 
