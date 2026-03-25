@@ -83,18 +83,31 @@ class Config:
         )
 
         parser.add_argument(
-            "--output_csv_path",
+            "--csv_dir",
             type=str,
             default="csv_results",
-            help="Directory where CSV outputs are saved (default: csv_results)",
+            help="Directory where CSV outputs are saved (default: csv_results), and will be used for plot creation.",
         )
 
         parser.add_argument(
             "--csv_write_mode",
             type=str,
             choices=[mode.value for mode in CsvWriteMode],
-            default=CsvWriteMode.SEPARATE.value,
-            help="CSV write mode: 'merge' appends into existing shared files, 'separate' (default) writes using the name of your db file as a stem.",
+            default=CsvWriteMode.MERGE.value,
+            help="CSV write mode: 'merge' (default) appends into existing shared files, 'separate' writes using the name of your db file as a stem.",
+        )
+
+        parser.add_argument(
+            "--plot_from_csv",
+            action="store_true",
+            help="Whether to create plots from the CSV files.",
+        )
+
+        parser.add_argument(
+            "--plot_output_dir",
+            type=str,
+            default="plots",
+            help="Directory to save generated plots (default: plots)",
         )
 
         parser.add_argument(
