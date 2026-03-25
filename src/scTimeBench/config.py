@@ -26,6 +26,16 @@ class RunType(Enum):
     TRAIN_ONLY = "train_only"
 
 
+class CsvExportType(Enum):
+    GRAPH_SIM = "graph_sim"
+    EMBEDDING = "embedding"
+
+
+class CsvWriteMode(Enum):
+    MERGE = "merge"
+    SEPARATE = "separate"
+
+
 class Config:
     """Config class for both yaml and cli arguments."""
 
@@ -65,16 +75,25 @@ class Config:
         )
 
         parser.add_argument(
-            "--graph_sim_to_csv",
-            action="store_true",
-            help="Print graph similarity evaluations as CSV to stdout",
+            "--to_csv",
+            nargs="*",
+            choices=[csv_type.value for csv_type in CsvExportType],
+            help="Export results to CSV. Use '--to_csv' with no values to export both graph_sim and embedding, or provide one/both values explicitly.",
         )
 
         parser.add_argument(
             "--output_csv_path",
             type=str,
-            default="graph_sim.csv",
-            help="Optional path to save CSV output of graph similarity evaluations; if omitted, outputs to graph_sim.csv",
+            default="csv_results",
+            help="Directory where CSV outputs are saved (default: csv_results)",
+        )
+
+        parser.add_argument(
+            "--csv_write_mode",
+            type=str,
+            choices=[mode.value for mode in CsvWriteMode],
+            default=CsvWriteMode.SEPARATE.value,
+            help="CSV write mode: 'merge' appends into existing shared files, 'separate' (default) writes using the name of your db file as a stem.",
         )
 
         parser.add_argument(
@@ -149,6 +168,10 @@ class Config:
         # Parse known arguments
         args = parser.parse_args()
 
+        # If --to_csv is provided without values, export all supported CSV outputs.
+        if args.to_csv is not None and len(args.to_csv) == 0:
+            args.to_csv = [csv_type.value for csv_type in CsvExportType]
+
         # first handle the Easter egg
         if args.crispy_fishstick:
             from scTimeBench.shared.utils import animate, restore_interrupts
@@ -200,6 +223,17 @@ class Config:
         for key, value in defaults.items():
             if not hasattr(self, key) or getattr(self, key) is None:
                 setattr(self, key, value)
+
+        # Normalize csv export selections to enum values for consistent downstream use.
+        if hasattr(self, "to_csv") and self.to_csv is not None:
+            self.to_csv = [
+                item if isinstance(item, CsvExportType) else CsvExportType(item)
+                for item in self.to_csv
+            ]
+
+        if hasattr(self, "csv_write_mode") and self.csv_write_mode is not None:
+            if not isinstance(self.csv_write_mode, CsvWriteMode):
+                self.csv_write_mode = CsvWriteMode(self.csv_write_mode)
 
         # Configure logging with stdout always enabled and optional file output.
         resolved_log_level = getattr(logging, str(self.log_level).upper(), logging.INFO)

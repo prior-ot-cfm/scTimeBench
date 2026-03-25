@@ -33,6 +33,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 misc/
+misc
 
 # C extensions
 *.so
