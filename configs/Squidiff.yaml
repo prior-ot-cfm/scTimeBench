@@ -26,3 +26,5 @@ method:
 
 metrics:
  - name: OTLossMetric
+ - name: GraphSimMetric
+ - name: EmbeddingMetrics
