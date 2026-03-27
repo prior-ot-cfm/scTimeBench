@@ -1,15 +1,3 @@
-datasets:
-  - tag: EasyDrosophila
-  - tag: MediumDrosophila
-  - tag: HardDrosophila
-  - tag: EasyMEF
-  - tag: MediumMEF
-  - tag: HardMEF
-  - tag: EasyZebrafish
-  - tag: MediumZebrafish
-  - tag: HardZebrafish
-
-
 method:
   name: PISDE
   train_and_test_script: ./methods/PISDE/train_and_test.sh
@@ -34,5 +22,6 @@ method:
     leaveouts: null
 
 metrics:
-  - name: OTLossMetric
-  #- name: MMDLoss
+ - name: OTLossMetric
+ - name: GraphSimMetric
+ - name: EmbeddingMetrics

@@ -26,6 +26,6 @@ method:
     epoch: best
 
 metrics:
-  #- name: MMDLoss
-  #- name: GraphSimMetric
-  - name: OTLossMetric
+ - name: OTLossMetric
+ - name: GraphSimMetric
+ - name: EmbeddingMetrics
