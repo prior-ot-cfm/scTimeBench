@@ -19,5 +19,6 @@ method:
     auto_device: true
 
 metrics:
-  - name: OTLossMetric
-  #- name: GraphSimMetric
+ - name: OTLossMetric
+ - name: GraphSimMetric
+ - name: EmbeddingMetrics

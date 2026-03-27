@@ -22,5 +22,6 @@ method:
     t_max: 5
 
 metrics:
-  - name: OTLossMetric
- # - name: GraphSimMetric
+ - name: OTLossMetric
+ - name: GraphSimMetric
+ - name: EmbeddingMetrics
