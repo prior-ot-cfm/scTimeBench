@@ -126,4 +126,5 @@ datasets:
     data_preprocessing_steps:
       - name: LineageDatasetFilter
         cell_lineage_file: ./cell_lineages/axolotl/axolotl_lineage.txt
+      - name: LogNormPreprocessor
       - name: CopyTrainTest

@@ -1,6 +1,7 @@
 from scTimeBench.shared.dataset.base import BaseDatasetPreprocessor
 from scTimeBench.shared.utils import is_log_normalized_to_counts, is_raw
 import scanpy as sc
+import numpy as np
 import logging
 
 
@@ -32,6 +33,18 @@ class LogNormPreprocessor(BaseDatasetPreprocessor):
             return ann_data
 
         if not is_raw(ann_data) and ann_data.raw is None:
+            # assume that it's log normalized
+            # then we un-log normalize, and then re-apply log normalization to counts=10^4
+            # TODO: we should generally not have this but will make an exception in this repo only!
+            logging.debug(
+                "Data appears to be log-normalized but does not provide raw data. Un-log normalizing and re-applying log normalization to counts=10^4."
+            )
+            data = ann_data.copy()
+            data.X = np.expm1(data.X)  # un-log normalize
+            sc.pp.normalize_total(data, target_sum=self._parameters()["counts"])
+            sc.pp.log1p(data)
+            return data
+
             raise ValueError(
                 "Data appears to be normalized some other way and does not provide raw data. This could lead to errors down the line "
                 "with cell type lineage prediction. Please ensure that the data is log-normalized to counts=10^4, or that the raw data is provided for proper CellTypist performance."
