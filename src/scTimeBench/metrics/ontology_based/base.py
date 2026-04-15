@@ -6,6 +6,7 @@ from scTimeBench.shared.dataset.registry import (
     SuoDataset,
     GarciaAlonsoDataset,
     MaDataset,
+    ArtistaDataset,
 )
 
 import os
@@ -20,6 +21,7 @@ class OntologyBasedMetrics(BaseMetric):
             SuoDataset.__name__,
             GarciaAlonsoDataset.__name__,
             MaDataset.__name__,
+            ArtistaDataset.__name__,
         ]
 
         self.default_dataset_group = "ontology_based"
