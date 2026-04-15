@@ -118,3 +118,12 @@ datasets:
       - name: TestTimepointSelection
         test_tps: [1,3]
         use_time_indices: true
+
+  - name: ArtistaDataset
+    tag: defaultArtista
+    data_path: ./data/artista/Regeneration_subset_hvg2.h5ad
+    # these preprocessors need to be in order!
+    data_preprocessing_steps:
+      - name: LineageDatasetFilter
+        cell_lineage_file: ./cell_lineages/axolotl/axolotl_lineage.txt
+      - name: CopyTrainTest

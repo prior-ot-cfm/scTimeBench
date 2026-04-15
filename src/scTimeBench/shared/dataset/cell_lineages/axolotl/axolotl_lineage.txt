@@ -1,0 +1,3 @@
+reaEGC => rIPC1 => IMN => nptxEX
+reaEGC => rIPC2 => dpEX
+wntEGC => mpEX

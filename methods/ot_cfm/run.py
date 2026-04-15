@@ -92,14 +92,22 @@ def get_batch(
     for t_start in range(n_times - 1):
         x0_np = x_by_time[t_start]
         x1_np = x_by_time[t_start + 1]
-        y0_np = pseudotime_by_time[t_start]
-        y1_np = pseudotime_by_time[t_start + 1]
+
         idx0 = np.random.randint(x0_np.shape[0], size=batch_size)
         idx1 = np.random.randint(x1_np.shape[0], size=batch_size)
         x0 = torch.from_numpy(x0_np[idx0]).float().to(device)
         x1 = torch.from_numpy(x1_np[idx1]).float().to(device)
-        y0 = torch.from_numpy(y0_np[idx0]).float().to(device)
-        y1 = torch.from_numpy(y1_np[idx1]).float().to(device)
+
+        if pseudotime_by_time is not None:
+            y0_np = pseudotime_by_time[t_start]
+            y1_np = pseudotime_by_time[t_start + 1]
+            y0 = torch.from_numpy(y0_np[idx0]).float().to(device)
+            y1 = torch.from_numpy(y1_np[idx1]).float().to(device)
+        else:
+            y0_np = None
+            y1_np = None
+            y0 = None
+            y1 = None
 
         if return_noise:
             t, xt, ut, eps = fm.sample_location_and_conditional_flow(
@@ -162,12 +170,14 @@ class OTCFM(BaseMethod):
         self._x_by_time = [
             train_x[np.where(train_tps == tp)[0], :] for tp in self._unique_train_tps
         ]
-        if self.prior_method == "pseudotime_uniform":
+        if self.prior_method in [
+            "pseudotime_uniform",
+            "pseudotime_gaussian",
+            "pseudotime_gamma",
+        ]:
             self._pseudotime_by_time = label_pseudotimes_global(self._x_by_time)
         else:
-            self._pseudotime_by_time = [
-                np.zeros(x.shape[0], dtype=np.float32) for x in self._x_by_time
-            ]
+            self._pseudotime_by_time = None
 
         dim = int(train_x.shape[1])
         cache_path = Path(self.config["output_path"]) / "trained_ot_cfm_model.pth"
