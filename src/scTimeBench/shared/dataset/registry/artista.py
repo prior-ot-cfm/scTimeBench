@@ -16,6 +16,12 @@ class ArtistaDataset(BaseDataset):
         data_path = self.dataset_dict["data_path"]
         self.data = sc.read_h5ad(data_path)
 
+        # given the timepoints of 2DPI, 5DPI, etc.
+        # convert to numeric timepoints of 2, 5, etc.
+        self.data.obs["timepoint"] = (
+            self.data.obs["timepoint"].str.replace("DPI", "").astype(int)
+        )
+
         # rename these columns to standard names
         self.data.obs = self.data.obs.rename(
             columns={
