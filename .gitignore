@@ -2,10 +2,12 @@
 docs/_build/
 docs/source/_static/leaderboard
 
+
 # Misc. artifacts
 csv_results/
 *.png
 *.svg
+defaultArtista
 
 # Undo any assets image gitignores
 !/assets/*
