@@ -8,11 +8,13 @@ This implementation intentionally stays simple:
 """
 
 from pathlib import Path
+import pickle
 import sys
 
 import numpy as np
 import torch
 from scipy.sparse import issparse
+from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 from scTimeBench.method_utils.method_runner import BaseMethod, main
@@ -37,7 +39,52 @@ except ImportError:
 from torchdyn.core import NeuralODE
 
 
-def get_batch(fm, x_by_time, batch_size, n_times, device, return_noise=False):
+def label_pseudotimes_global(x_by_time):
+    """Compute one joint diffusion pseudotime over all cells and split by timepoint."""
+    try:
+        import scanpy as sc
+    except ImportError as e:
+        raise ImportError(
+            "scanpy is required for pseudotime_uniform prior. Please install scanpy."
+        ) from e
+
+    if len(x_by_time) < 2:
+        raise ValueError("Need at least two timepoints to compute pseudotime labels.")
+
+    sizes = [x.shape[0] for x in x_by_time]
+    if any(s == 0 for s in sizes):
+        raise ValueError("Each timepoint must contain at least one cell.")
+
+    x_joint = np.concatenate(x_by_time, axis=0).astype(np.float32, copy=False)
+    adata = sc.AnnData(x_joint)
+
+    n_cells = adata.n_obs
+    n_neighbors = min(15, max(1, n_cells - 1))
+    sc.pp.neighbors(adata, n_neighbors=n_neighbors, use_rep="X")
+    sc.tl.diffmap(adata)
+
+    first_tp_count = sizes[0]
+    root_pool = np.arange(first_tp_count)
+    dc1 = adata.obsm["X_diffmap"][root_pool, 0]
+    adata.uns["iroot"] = int(root_pool[np.argmin(dc1)])
+
+    sc.tl.dpt(adata)
+    t_joint = adata.obs["dpt_pseudotime"].to_numpy(dtype=np.float32)
+    t_joint = np.nan_to_num(t_joint, nan=0.0)
+
+    splits = np.cumsum(sizes[:-1])
+    return np.split(t_joint, splits)
+
+
+def get_batch(
+    fm,
+    x_by_time,
+    pseudotime_by_time,
+    batch_size,
+    n_times,
+    device,
+    return_noise=False,
+):
     """Construct a minibatch from each adjacent timepoint pair."""
     ts = []
     xts = []
@@ -47,19 +94,31 @@ def get_batch(fm, x_by_time, batch_size, n_times, device, return_noise=False):
     for t_start in range(n_times - 1):
         x0_np = x_by_time[t_start]
         x1_np = x_by_time[t_start + 1]
+
         idx0 = np.random.randint(x0_np.shape[0], size=batch_size)
         idx1 = np.random.randint(x1_np.shape[0], size=batch_size)
         x0 = torch.from_numpy(x0_np[idx0]).float().to(device)
         x1 = torch.from_numpy(x1_np[idx1]).float().to(device)
 
+        if pseudotime_by_time is not None:
+            y0_np = pseudotime_by_time[t_start]
+            y1_np = pseudotime_by_time[t_start + 1]
+            y0 = torch.from_numpy(y0_np[idx0]).float().to(device)
+            y1 = torch.from_numpy(y1_np[idx1]).float().to(device)
+        else:
+            y0_np = None
+            y1_np = None
+            y0 = None
+            y1 = None
+
         if return_noise:
             t, xt, ut, eps = fm.sample_location_and_conditional_flow(
-                x0, x1, return_noise=True
+                x0, x1, y0=y0, y1=y1, return_noise=True
             )
             noises.append(eps)
         else:
             t, xt, ut = fm.sample_location_and_conditional_flow(
-                x0, x1, return_noise=False
+                x0, x1, y0=y0, y1=y1, return_noise=False
             )
 
         ts.append(t + t_start)
@@ -88,15 +147,26 @@ class OTCFM(BaseMethod):
         self.mlp_width = int(metadata.get("mlp_width", 64))
         self.ode_solver = str(metadata.get("ode_solver", "dopri5"))
         self.ode_sensitivity = str(metadata.get("ode_sensitivity", "adjoint"))
+        self.embedding_space = str(metadata.get("embedding_space", "GEX")).upper()
+        if self.embedding_space not in {"GEX", "PCA"}:
+            raise ValueError("metadata.embedding_space must be either 'GEX' or 'PCA'.")
+        self.pca_components = int(metadata.get("pca_components", 50))
 
         self.method = str(metadata.get("method", "exact"))
         self.prior_method = str(metadata.get("prior_method", "to_first"))
+        self.reg = float(metadata.get("reg", 0.1))
 
         self._unique_train_tps = []
         self._tp_to_index = {}
         self._x_by_time = []
+        self._pseudotime_by_time = []
+        self._pca_model = None
         self._model = None
         self._node = None
+
+    def _to_dense_float32(self, X):
+        data = X.toarray() if issparse(X) else X
+        return np.asarray(data, dtype=np.float32)
 
     def train(self, ann_data, all_tps=None):
         time_col = ObservationColumns.TIMEPOINT.value
@@ -106,14 +176,47 @@ class OTCFM(BaseMethod):
         if len(self._unique_train_tps) < 2:
             raise ValueError("OT-CFM training needs at least 2 train timepoints.")
 
-        train_x = ann_data.X.toarray() if issparse(ann_data.X) else ann_data.X
-        train_x = np.asarray(train_x, dtype=np.float32)
+        output_dir = Path(self.config["output_path"])
+        cache_path = (
+            output_dir / f"trained_ot_cfm_model_{self.embedding_space.lower()}.pth"
+        )
+        pca_cache_path = output_dir / "trained_ot_cfm_pca_model.pkl"
+
+        train_gex = self._to_dense_float32(ann_data.X)
+        if self.embedding_space == "PCA":
+            if pca_cache_path.exists():
+                with open(pca_cache_path, "rb") as f:
+                    self._pca_model = pickle.load(f)
+            else:
+                n_components = min(
+                    self.pca_components,
+                    train_gex.shape[0],
+                    train_gex.shape[1],
+                )
+                if n_components < 1:
+                    raise ValueError("PCA requires at least one component.")
+                self._pca_model = PCA(n_components=n_components)
+                self._pca_model.fit(train_gex)
+                with open(pca_cache_path, "wb") as f:
+                    pickle.dump(self._pca_model, f)
+
+            train_x = self._pca_model.transform(train_gex).astype(np.float32)
+        else:
+            train_x = train_gex
+
         self._x_by_time = [
             train_x[np.where(train_tps == tp)[0], :] for tp in self._unique_train_tps
         ]
+        if self.prior_method in [
+            "pseudotime_uniform",
+            "pseudotime_gaussian",
+            "pseudotime_gamma",
+        ]:
+            self._pseudotime_by_time = label_pseudotimes_global(self._x_by_time)
+        else:
+            self._pseudotime_by_time = None
 
         dim = int(train_x.shape[1])
-        cache_path = Path(self.config["output_path"]) / "trained_ot_cfm_model.pth"
         self._model = MLP(dim=dim, time_varying=True, w=self.mlp_width).to(self.device)
 
         if cache_path.exists():
@@ -130,7 +233,10 @@ class OTCFM(BaseMethod):
 
         optimizer = torch.optim.Adam(self._model.parameters(), self.learning_rate)
         fm = ExactOptimalTransportConditionalFlowMatcher(
-            sigma=self.sigma, method=self.method, prior_method=self.prior_method
+            sigma=self.sigma,
+            method=self.method,
+            prior_method=self.prior_method,
+            reg=self.reg,
         )
 
         self._model.train()
@@ -139,6 +245,7 @@ class OTCFM(BaseMethod):
             t, xt, ut = get_batch(
                 fm,
                 self._x_by_time,
+                self._pseudotime_by_time,
                 self.batch_size,
                 len(self._x_by_time),
                 self.device,
@@ -232,14 +339,19 @@ class OTCFM(BaseMethod):
         test_tps = test_ann_data.obs[time_col].to_numpy()
         unique_test_tps = sorted(np.unique(test_tps))
 
-        test_x = (
-            test_ann_data.X.toarray() if issparse(test_ann_data.X) else test_ann_data.X
-        )
-        test_x = np.asarray(test_x, dtype=np.float32)
-
-        out = np.full(
-            (test_ann_data.n_obs, test_ann_data.n_vars), np.nan, dtype=np.float32
-        )
+        test_gex = self._to_dense_float32(test_ann_data.X)
+        if self.embedding_space == "PCA":
+            if self._pca_model is None:
+                raise RuntimeError("PCA model not available. Call train() first.")
+            test_x = self._pca_model.transform(test_gex).astype(np.float32)
+            out = np.full(
+                (test_ann_data.n_obs, test_x.shape[1]), np.nan, dtype=np.float32
+            )
+        else:
+            test_x = test_gex
+            out = np.full(
+                (test_ann_data.n_obs, test_ann_data.n_vars), np.nan, dtype=np.float32
+            )
 
         for tp in unique_test_tps:
             candidate_next_tps = [x for x in unique_test_tps if x > tp]
@@ -251,6 +363,15 @@ class OTCFM(BaseMethod):
             source_x = test_x[source_idx]
 
             out[source_idx] = self._predict_one_step(source_x, tp, next_tp)
+
+        if self.embedding_space == "PCA":
+            out_gex = np.full(
+                (test_ann_data.n_obs, test_ann_data.n_vars), np.nan, dtype=np.float32
+            )
+            valid_rows = ~np.isnan(out).any(axis=1)
+            if np.any(valid_rows):
+                out_gex[valid_rows] = self._pca_model.inverse_transform(out[valid_rows])
+            return out_gex.astype(np.float32)
 
         return out
 

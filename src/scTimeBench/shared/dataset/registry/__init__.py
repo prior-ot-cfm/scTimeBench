@@ -6,6 +6,7 @@ from .maolaniru import MaOlaniruDataset
 from .zebrafish import ZebrafishDataset
 from .drosophila import DrosophilaDataset
 from .mef import MEFDataset
+from .artista import ArtistaDataset
 
 __all__ = [
     "SuoDataset",
@@ -16,4 +17,5 @@ __all__ = [
     "ZebrafishDataset",
     "DrosophilaDataset",
     "MEFDataset",
+    "ArtistaDataset",
 ]
