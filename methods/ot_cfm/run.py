@@ -76,10 +76,34 @@ def label_pseudotimes_global(x_by_time):
     return np.split(t_joint, splits)
 
 
+def set_spatial_coordinates(ann_data, train_tps, unique_tps):
+    """Set numerical mappings from spatial coordinate annotations for each timepoint."""
+    spatial_by_time = []
+    
+    dv_map = {'V': 0.0, 'D': 1.0}
+
+
+    # Also check for any NaNs
+    if('D_V' not in ann_data.obs.columns):
+        raise ValueError("Spatial prior method requires 'D_V' and 'inj_M_L' columns in ann_data.obs. If different annotations are present please set coordiante system manually in the code.")
+    for tp in unique_tps:
+        indices = np.where(train_tps == tp)[0]
+        
+        tp_obs = ann_data.obs.iloc[indices]
+    
+        dv = tp_obs['D_V'].astype(object).map(dv_map).fillna(0.5).values
+        
+        # Combine into (N, 2) array
+        coords = np.stack([dv], axis=1).astype(np.float32)
+        spatial_by_time.append(coords)
+        
+    return spatial_by_time
+
 def get_batch(
     fm,
     x_by_time,
     pseudotime_by_time,
+    spatial_by_time,
     batch_size,
     n_times,
     device,
@@ -110,15 +134,23 @@ def get_batch(
             y1_np = None
             y0 = None
             y1 = None
+        if spatial_by_time is not None:
+            coords_0_np = spatial_by_time[t_start]
+            coords_1_np = spatial_by_time[t_start + 1]
+            coords_0 = torch.from_numpy(coords_0_np[idx0]).float().to(device)
+            coords_1 = torch.from_numpy(coords_1_np[idx1]).float().to(device)
+            D = torch.cdist(coords_0, coords_1)
+        else:
+            D = None
 
         if return_noise:
             t, xt, ut, eps = fm.sample_location_and_conditional_flow(
-                x0, x1, y0=y0, y1=y1, return_noise=True
+                x0, x1, y0=y0, y1=y1, D=D, return_noise=True
             )
             noises.append(eps)
         else:
             t, xt, ut = fm.sample_location_and_conditional_flow(
-                x0, x1, y0=y0, y1=y1, return_noise=False
+                x0, x1, y0=y0, y1=y1, D=D, return_noise=False
             )
 
         ts.append(t + t_start)
@@ -160,6 +192,7 @@ class OTCFM(BaseMethod):
         self._tp_to_index = {}
         self._x_by_time = []
         self._pseudotime_by_time = []
+        self._spatial_data = []
         self._pca_model = None
         self._model = None
         self._node = None
@@ -215,6 +248,11 @@ class OTCFM(BaseMethod):
             self._pseudotime_by_time = label_pseudotimes_global(self._x_by_time)
         else:
             self._pseudotime_by_time = None
+        
+        if self.prior_method == "spatial":
+            self._spatial_data = set_spatial_coordinates(ann_data, train_tps, self._unique_train_tps)
+        else:
+            self._spatial_data = None
 
         dim = int(train_x.shape[1])
         self._model = MLP(dim=dim, time_varying=True, w=self.mlp_width).to(self.device)
@@ -246,6 +284,7 @@ class OTCFM(BaseMethod):
                 fm,
                 self._x_by_time,
                 self._pseudotime_by_time,
+                self._spatial_data,
                 self.batch_size,
                 len(self._x_by_time),
                 self.device,
