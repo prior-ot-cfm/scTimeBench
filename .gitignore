@@ -7,7 +7,6 @@ docs/source/_static/leaderboard
 csv_results/
 *.png
 *.svg
-defaultArtista
 
 # Undo any assets image gitignores
 !/assets/*
