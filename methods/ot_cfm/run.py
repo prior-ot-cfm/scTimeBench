@@ -244,12 +244,13 @@ class OTCFM(BaseMethod):
             "pseudotime_uniform",
             "pseudotime_gaussian",
             "pseudotime_gamma",
+            "combined_spatial_pseudotime_gaussian",
         ]:
             self._pseudotime_by_time = label_pseudotimes_global(self._x_by_time)
         else:
             self._pseudotime_by_time = None
         
-        if self.prior_method == "spatial":
+        if self.prior_method in ["spatial", "combined_spatial_pseudotime_gaussian"]:
             self._spatial_data = set_spatial_coordinates(ann_data, train_tps, self._unique_train_tps)
         else:
             self._spatial_data = None

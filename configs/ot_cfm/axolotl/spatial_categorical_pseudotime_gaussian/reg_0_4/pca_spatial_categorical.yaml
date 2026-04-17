@@ -1,0 +1,17 @@
+datasets:
+  - tag: defaultArtista
+
+method:
+  name: ot_cfm
+  train_and_test_script: ./methods/ot_cfm/train_and_test.sh
+  metadata:
+    method: 'prior'
+    prior_method: 'spatial'
+    reg: 0.4
+    embedding_space: 'PCA'
+
+metrics:
+  - name: GraphSimMetric
+    trajectory_infer_model:
+      name: CellTypist
+      renormalize: True
